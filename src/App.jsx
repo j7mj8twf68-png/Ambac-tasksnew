@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } 
-
+import React, { useState, useEffect, useCallback, useRef } from "react";
 
 // ─── LocalStorage helper ──────────────────────────────────────────────────
 const LS = {
@@ -9,7 +8,7 @@ const LS = {
 
 // ─── Supabase config (set via environment or directly here) ────────────
 const SB_URL = (typeof import_meta_env !== "undefined" && import_meta_env.VITE_SUPABASE_URL) || window.SUPABASE_URL || "";
-const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "";
+const SB_KEY = (typeof import_meta_env !== "undefined" && import_meta_env.VITE_SUPABASE_ANON_KEY) || window.SUPABASE_ANON_KEY || "";
 const SB_HEADERS = { "Content-Type":"application/json", "apikey":SB_KEY, "Authorization":"Bearer "+SB_KEY, "Prefer":"return=representation" };
 const sbFetch = async (path, opts={}) => {
   if (!SB_URL || !SB_KEY) return [];
@@ -186,7 +185,7 @@ export default function App() {
   const prevPctRef = useRef(0);
 
   const [loading, setLoading] = useState(false);
-  const [useCloud, setUseCloud] = useState(!!(import.meta.env.VITE_SUPABASE_URL || window.SUPABASE_URL));
+  const [useCloud, setUseCloud] = useState(!!(window.SUPABASE_URL || (typeof import_meta_env !== "undefined" && import_meta_env.VITE_SUPABASE_URL)));
 
   // ── Load from Supabase on mount ────────────────────────────────────────
   useEffect(() => {
