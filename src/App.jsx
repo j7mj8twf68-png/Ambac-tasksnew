@@ -1,4 +1,4 @@
-const { useState, useEffect, useCallback, useRef } = React;
+import React, { useState, useEffect, useCallback, useRef } 
 
 
 // ─── LocalStorage helper ──────────────────────────────────────────────────
