@@ -35,6 +35,15 @@ const initials = (name) => name.split(" ").map(w => w[0]).join("").toUpperCase()
 const timeAgo = (iso) => { if (!iso) return ""; const s = Math.floor((Date.now()-new Date(iso))/1000); if(s<60) return "just now"; if(s<3600) return Math.floor(s/60)+"m ago"; if(s<86400) return Math.floor(s/3600)+"h ago"; return Math.floor(s/86400)+"d ago"; };
 const todayIdx = () => new Date().getDay();
 const daysOverdue = (d) => { if(!d) return 0; const due=new Date(d); const now=new Date(); due.setHours(0,0,0,0); now.setHours(0,0,0,0); return Math.max(0,Math.round((now-due)/86400000)); };
+const parseDueMins = (dueTime) => {
+  if (!dueTime || dueTime==="-") return 9999;
+  const m = dueTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return 9999;
+  let h = parseInt(m[1]);
+  if (m[3].toUpperCase()==="PM" && h!==12) h+=12;
+  if (m[3].toUpperCase()==="AM" && h===12) h=0;
+  return h*60+parseInt(m[2]);
+};
 
 const PRIORITIES = [
   { key:"high",   label:"High",   color:"#DC2626", bg:"#FEE2E2", order:0 },
@@ -1023,16 +1032,6 @@ export default function App() {
             const nowMins = now.getHours()*60 + now.getMinutes();
 
             // Parse due time to minutes for sorting/comparison
-            const parseDueMins = (dueTime) => {
-              if (!dueTime || dueTime==="-") return 9999;
-              const m = dueTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
-              if (!m) return 9999;
-              let h = parseInt(m[1]);
-              if (m[3].toUpperCase()==="PM" && h!==12) h+=12;
-              if (m[3].toUpperCase()==="AM" && h===12) h=0;
-              return h*60+parseInt(m[2]);
-            };
-
             const filtered = visibleLists.filter(l => {
               const p = progress(l);
               if (dashFilter==="attention") return p < 100;
