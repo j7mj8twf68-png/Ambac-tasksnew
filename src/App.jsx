@@ -10,15 +10,17 @@ const LS = {
 const SB_URL = import.meta.env.VITE_SUPABASE_URL || window.SUPABASE_URL || "";
 const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "";
 const CLOUD_ENABLED = !!(SB_URL && SB_KEY);
+console.log("CLOUD_ENABLED:", CLOUD_ENABLED, "URL:", SB_URL ? "SET" : "MISSING", "KEY:", SB_KEY ? "SET" : "MISSING");
 const SB_HEADERS = { "Content-Type":"application/json", "apikey":SB_KEY, "Authorization":"Bearer "+SB_KEY, "Prefer":"return=representation" };
 const sbFetch = async (path, opts={}) => {
-  if (!SB_URL || !SB_KEY) return [];
+  if (!SB_URL || !SB_KEY) { console.warn("Supabase not configured"); return []; }
   try {
+    console.log("sbFetch:", path, opts.method||"GET");
     const res = await fetch(SB_URL+"/rest/v1/"+path, { headers:{...SB_HEADERS,...(opts.headers||{})}, ...opts });
-    if (!res.ok) return [];
+    if (!res.ok) { const err = await res.text(); console.error("Supabase error:", err); return []; }
     const text = await res.text();
     return text ? JSON.parse(text) : [];
-  } catch(e) { return []; }
+  } catch(e) { console.error("sbFetch error:", e); return []; }
 };
 const sbUpsert = (table, row) => sbFetch(table, { method:"POST", headers:{"Prefer":"resolution=merge-duplicates,return=representation"}, body:JSON.stringify(row) });
 const sbDelete = (table, id) => sbFetch(table+"?id=eq."+id, { method:"DELETE" });
@@ -1599,6 +1601,9 @@ export default function App() {
                     window.location.reload();
                   }
                 }} style={{...s.rolloverTestBtn, background:"#374151", marginTop:"8px"}}>Reset All Data</button>
+                <div style={{background:CLOUD_ENABLED?"#DCFCE7":"#FEE2E2", borderRadius:"10px", padding:"10px 14px", marginTop:"8px", fontSize:"13px", color:CLOUD_ENABLED?"#15803D":"#C41230", fontWeight:700}}>
+                  {CLOUD_ENABLED ? "Cloud: Connected" : "Cloud: NOT Connected - check Vercel env vars"}
+                </div>
                 <button onClick={async () => {
                   if (!CLOUD_ENABLED) { alert("Supabase not connected."); return; }
                   let count = 0;
