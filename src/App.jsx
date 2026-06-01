@@ -22,7 +22,7 @@ const sbFetch = async (path, opts={}) => {
     return text ? JSON.parse(text) : [];
   } catch(e) { console.error("sbFetch error:", e); return []; }
 };
-const sbUpsert = (table, row) => sbFetch(table, { method:"POST", headers:{"Prefer":"resolution=merge-duplicates,return=representation"}, body:JSON.stringify(row) });
+const sbUpsert = (table, row) => sbFetch(table, { method:"POST", headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Prefer":"resolution=merge-duplicates,return=representation"}, body:JSON.stringify(row) });
 const sbDelete = (table, id) => sbFetch(table+"?id=eq."+id, { method:"DELETE" });
 const sbPatch  = (table, filter, row) => sbFetch(table+"?"+filter, { method:"PATCH", body:JSON.stringify(row) });
 
