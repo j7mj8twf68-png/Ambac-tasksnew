@@ -1142,12 +1142,21 @@ export default function App() {
     });
 
     lists.forEach(list => {
+      // Check if this list is overdue today (due time passed and scheduled today)
+      const dueMins = parseDueMins(list.dueTime);
+      const nowMins2 = new Date().getHours()*60 + new Date().getMinutes();
+      const isScheduledToday2 = !list.scheduleMode || list.scheduleMode === "always" ||
+        (list.scheduleMode === "recurring" && list.scheduleDays && list.scheduleDays.includes(todayIdx())) ||
+        (list.scheduleMode === "oneTime" && list.scheduleDate && new Date(list.scheduleDate+"T00:00:00").toDateString() === new Date().toDateString());
+      const listOverdueToday = dueMins > 0 && nowMins2 > dueMins && isScheduledToday2 && !list.isRollover;
+
       list.tasks.forEach(task => {
         const owners = (task.taskAssignees&&task.taskAssignees.length>0) ? task.taskAssignees : list.assignedTo;
         owners.forEach(wId => {
           if (!workerReport[wId]) return;
           const r = workerReport[wId];
           r.totalAssigned++;
+          // Overdue from originalDueDate (rollover tasks)
           if (task.originalDueDate && !task.doneBy) {
             const days = daysOverdue(task.originalDueDate);
             if (days > 0) {
@@ -1156,6 +1165,12 @@ export default function App() {
               const alreadyCounted = r.overdueTasks.some(o => o.task.text.trim().toLowerCase().replace(/\s+/g," ")===norm);
               if (!finishedElsewhere && !alreadyCounted) r.overdueTasks.push({ task, list, days });
             }
+          }
+          // Overdue from list due time passing today
+          if (listOverdueToday && !task.doneBy && !task.originalDueDate) {
+            const norm = task.text.trim().toLowerCase().replace(/\s+/g," ");
+            const alreadyCounted = r.overdueTasks.some(o => o.task.text.trim().toLowerCase().replace(/\s+/g," ")===norm);
+            if (!alreadyCounted) r.overdueTasks.push({ task, list, days: 0, todayOverdue: true });
           }
           if (task.doneBy===wId && task.doneAt) {
             const doneD = new Date(task.doneAt); doneD.setHours(0,0,0,0);
@@ -1355,7 +1370,7 @@ export default function App() {
                               <div style={s.reportTaskMeta}>
                                 <span style={s.reportTaskList}>{list?list.title:"(removed)"}</span>
                                 <span style={{...s.reportDaysBadge, background:days>=3?"#FEE2E2":days>=2?"#FEF3C7":"#FFF7ED", color:days>=3?"#C41230":days>=2?"#B45309":"#C2410C"}}>
-                                  {days} day{days!==1?"s":""} overdue
+                                  {todayOverdue ? "Due today" : days + " day" + (days!==1?"s":"") + " overdue"}
                                 </span>
                               </div>
                             </div>
