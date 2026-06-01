@@ -1573,6 +1573,22 @@ export default function App() {
                     window.location.reload();
                   }
                 }} style={{...s.rolloverTestBtn, background:"#374151", marginTop:"8px"}}>Reset All Data</button>
+                <button onClick={async () => {
+                  if (!CLOUD_ENABLED) { alert("Supabase not connected."); return; }
+                  let count = 0;
+                  for (const l of lists) {
+                    await sbUpsert("lists", { id:l.id, title:l.title, due_time:l.dueTime||"-", color:l.color, is_rollover:l.isRollover||false, created_by:l.createdBy||null, assigned_to:l.assignedTo||[], schedule_mode:l.scheduleMode||"always", schedule_days:l.scheduleDays||[], schedule_date:l.scheduleDate||null });
+                    for (let i=0; i<l.tasks.length; i++) {
+                      const t = l.tasks[i];
+                      await sbUpsert("tasks", { id:t.id, list_id:l.id, text:t.text, priority:t.priority||"none", task_assignees:t.taskAssignees||[], schedule_mode:t.scheduleMode||"always", days:t.days||[], start_date:t.startDate||null, done_by:t.doneBy||null, done_at:t.doneAt||null, note:t.note||null, note_by:t.noteBy||null, note_at:t.noteAt||null, original_due_date:t.originalDueDate||null, from_list:t._fromList||null, sort_order:i });
+                    }
+                    count++;
+                  }
+                  for (const w of workers) {
+                    await sbUpsert("workers", { id:w.id, name:w.name, role:w.role, position:w.position||"Worker", avatar:w.avatar, pin:w.pin||"0000" });
+                  }
+                  alert("Pushed " + count + " lists and " + workers.length + " workers to cloud!");
+                }} style={{...s.rolloverTestBtn, background:"#059669", marginTop:"8px"}}>&#x2601; Push All Data to Cloud</button>
               </div>
 
               <div style={s.sectionLabel}>HIGH PRIORITY REMINDERS</div>
