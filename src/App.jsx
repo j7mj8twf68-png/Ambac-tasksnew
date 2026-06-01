@@ -1362,7 +1362,7 @@ export default function App() {
                     {r.overdueTasks.length > 0 && (
                       <div style={s.workerReportTasks}>
                         <div style={s.workerReportTasksLabel}>OVERDUE</div>
-                        {r.overdueTasks.sort((a,b)=>b.days-a.days).map(({task,list,days}) => (
+                        {r.overdueTasks.sort((a,b)=>b.days-a.days).map(({task,list,days,todayOverdue}) => (
                           <div key={task.id} style={s.reportTaskRow}>
                             <div style={{...s.reportTaskAccent, background:getPriority(task.priority||"none").color}} />
                             <div style={s.reportTaskInfo}>
