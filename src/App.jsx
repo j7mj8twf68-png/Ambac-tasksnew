@@ -9,6 +9,7 @@ const LS = {
 // ─── Supabase config (set via environment or directly here) ────────────
 const SB_URL = import.meta.env.VITE_SUPABASE_URL || window.SUPABASE_URL || "";
 const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "";
+const CLOUD_ENABLED = !!(SB_URL && SB_KEY);
 const SB_HEADERS = { "Content-Type":"application/json", "apikey":SB_KEY, "Authorization":"Bearer "+SB_KEY, "Prefer":"return=representation" };
 const sbFetch = async (path, opts={}) => {
   if (!SB_URL || !SB_KEY) return [];
@@ -185,11 +186,10 @@ export default function App() {
   const prevPctRef = useRef(0);
 
   const [loading, setLoading] = useState(false);
-  const [useCloud, setUseCloud] = useState(!!(import.meta.env.VITE_SUPABASE_URL || window.SUPABASE_URL));
 
   // ── Load from Supabase on mount ────────────────────────────────────────
   useEffect(() => {
-    if (!SB_URL || !SB_KEY) return; // no config, stay with localStorage
+    if (!CLOUD_ENABLED) return; // no config, stay with localStorage
     setLoading(true);
     Promise.all([
       sbFetch("workers?order=created_at.asc"),
@@ -232,14 +232,14 @@ export default function App() {
         });
         setNotifMap(nm);
       }
-      setUseCloud(true);
+      
     }).catch(e => { console.warn("Supabase load failed, using localStorage:", e); })
     .finally(() => setLoading(false));
   }, []);
 
   // ── Persist to localStorage (always) + Supabase (when configured) ──────
-  useEffect(() => { LS.set("wh_workers", workers); if (useCloud) workers.forEach(w => sbUpsert("workers", { id:w.id, name:w.name, role:w.role, position:w.position||"Worker", avatar:w.avatar, pin:w.pin||"0000" })); }, [workers]);
-  useEffect(() => { LS.set("wh_lists", lists); if (useCloud) { lists.forEach(l => { sbUpsert("lists", { id:l.id, title:l.title, due_time:l.dueTime||"-", color:l.color, is_rollover:l.isRollover||false, created_by:l.createdBy||null, assigned_to:l.assignedTo||[], schedule_mode:l.scheduleMode||"always", schedule_days:l.scheduleDays||[], schedule_date:l.scheduleDate||null }); l.tasks.forEach((t,i) => sbUpsert("tasks", { id:t.id, list_id:l.id, text:t.text, priority:t.priority||"none", task_assignees:t.taskAssignees||[], schedule_mode:t.scheduleMode||"always", days:t.days||[], start_date:t.startDate||null, done_by:t.doneBy||null, done_at:t.doneAt||null, note:t.note||null, note_by:t.noteBy||null, note_at:t.noteAt||null, original_due_date:t.originalDueDate||null, from_list:t._fromList||null, sort_order:i })); }); } }, [lists]);
+  useEffect(() => { LS.set("wh_workers", workers); if (CLOUD_ENABLED) workers.forEach(w => sbUpsert("workers", { id:w.id, name:w.name, role:w.role, position:w.position||"Worker", avatar:w.avatar, pin:w.pin||"0000" })); }, [workers]);
+  useEffect(() => { LS.set("wh_lists", lists); if (CLOUD_ENABLED) { lists.forEach(l => { sbUpsert("lists", { id:l.id, title:l.title, due_time:l.dueTime||"-", color:l.color, is_rollover:l.isRollover||false, created_by:l.createdBy||null, assigned_to:l.assignedTo||[], schedule_mode:l.scheduleMode||"always", schedule_days:l.scheduleDays||[], schedule_date:l.scheduleDate||null }); l.tasks.forEach((t,i) => sbUpsert("tasks", { id:t.id, list_id:l.id, text:t.text, priority:t.priority||"none", task_assignees:t.taskAssignees||[], schedule_mode:t.scheduleMode||"always", days:t.days||[], start_date:t.startDate||null, done_by:t.doneBy||null, done_at:t.doneAt||null, note:t.note||null, note_by:t.noteBy||null, note_at:t.noteAt||null, original_due_date:t.originalDueDate||null, from_list:t._fromList||null, sort_order:i })); }); } }, [lists]);
   useEffect(() => { LS.set("wh_activity", activityLog); }, [activityLog]);
   useEffect(() => { LS.set("wh_notifs", notifMap); }, [notifMap]);
   useEffect(() => { if (currentUser) LS.set("wh_user", currentUser); else localStorage.removeItem("wh_user"); }, [currentUser]);
@@ -416,8 +416,8 @@ export default function App() {
   const log = useCallback((msg, userId) => {
     const entry = { id:uid(), msg, userId, at:new Date().toISOString() };
     setActivityLog(prev => [entry, ...prev].slice(0,200));
-    if (useCloud) sbFetch("activity", { method:"POST", body:JSON.stringify({ id:entry.id, msg:entry.msg, user_id:entry.userId }) });
-  }, [useCloud]);
+    if (CLOUD_ENABLED) sbFetch("activity", { method:"POST", body:JSON.stringify({ id:entry.id, msg:entry.msg, user_id:entry.userId }) });
+  }, []);
 
   const pushNotif = useCallback((userIds, title, body, listId=null) => {
     const n = { id:uid(), title, body, listId, at:new Date().toISOString(), read:false };
@@ -426,8 +426,8 @@ export default function App() {
       userIds.forEach(uid2 => { next[uid2] = [n,...(next[uid2]||[])].slice(0,50); });
       return next;
     });
-    if (useCloud) userIds.forEach(uid2 => sbFetch("notifications", { method:"POST", body:JSON.stringify({ id:uid(), user_id:uid2, title, body, list_id:listId||null, is_read:false }) }));
-  }, [useCloud]);
+    if (CLOUD_ENABLED) userIds.forEach(uid2 => sbFetch("notifications", { method:"POST", body:JSON.stringify({ id:uid(), user_id:uid2, title, body, list_id:listId||null, is_read:false }) }));
+  }, []);
   // ── Login ─────────────────────────────────────────────────────────────────
   const handleLogin = (user) => {
     setCurrentUser(user);
@@ -480,7 +480,7 @@ export default function App() {
 
   const deleteTask = (listId, taskId) => {
     setLists(prev => prev.map(l => l.id!==listId ? l : { ...l, tasks: l.tasks.filter(t => t.id!==taskId) }));
-    if (useCloud) sbDelete("tasks", taskId);
+    if (CLOUD_ENABLED) sbDelete("tasks", taskId);
   };
 
   const setTaskPriority = (listId, taskId, priority) => {
@@ -552,7 +552,7 @@ export default function App() {
 
   const deleteList = (listId) => {
     setLists(prev => prev.filter(l => l.id!==listId));
-    if (useCloud) sbDelete("lists", listId); // tasks cascade delete
+    if (CLOUD_ENABLED) sbDelete("lists", listId); // tasks cascade delete
     log("Deleted a list", currentUser.id);
   };
 
@@ -590,7 +590,7 @@ export default function App() {
 
   const removeWorker = (wId) => {
     setWorkers(prev => prev.filter(w => w.id!==wId));
-    if (useCloud) sbDelete("workers", wId);
+    if (CLOUD_ENABLED) sbDelete("workers", wId);
   };
 
   // ── Notifications ─────────────────────────────────────────────────────────
@@ -599,7 +599,7 @@ export default function App() {
 
   const markAllRead = () => {
     setNotifMap(prev => ({ ...prev, [currentUser.id]: (prev[currentUser.id]||[]).map(n => ({ ...n, read:true })) }));
-    if (useCloud) sbPatch("notifications", "user_id=eq."+currentUser.id+"&is_read=eq.false", { is_read:true });
+    if (CLOUD_ENABLED) sbPatch("notifications", "user_id=eq."+currentUser.id+"&is_read=eq.false", { is_read:true });
   };
   // ── LOGIN VIEW ────────────────────────────────────────────────────────────
   // Loading screen while fetching from Supabase
@@ -923,7 +923,7 @@ export default function App() {
               {!isManager && <div style={s.headerSub}>Your assigned tasks today</div>}
             </div>
             <div style={s.headerActions}>
-              {useCloud && <span style={s.cloudBadge} title="Synced to cloud">&#x2601;</span>}
+              {CLOUD_ENABLED && <span style={s.cloudBadge} title="Synced to cloud">&#x2601;</span>}
               {isManager && (
                 <>
                   <button onClick={() => setView("report")} style={s.iconBtn} title="Reports">&#x1F4CA;</button>
