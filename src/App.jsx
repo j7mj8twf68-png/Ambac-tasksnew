@@ -202,7 +202,13 @@ export default function App() {
     ]).then(([dbWorkers, dbLists, dbTasks, dbActivity, dbNotifs]) => {
       // Map DB rows to app format
       if (dbWorkers.length > 0) {
-        setWorkers(dbWorkers.map(w => ({ id:w.id, name:w.name, role:w.role, position:w.position, avatar:w.avatar, pin:w.pin })));
+        const w = dbWorkers.map(w => ({ id:w.id, name:w.name, role:w.role, position:w.position, avatar:w.avatar, pin:w.pin }));
+        setWorkers(w);
+        LS.set("wh_workers", w);
+      } else {
+        // Supabase is empty - clear localStorage workers too
+        setWorkers([]);
+        LS.set("wh_workers", []);
       }
       if (dbLists.length > 0) {
         const listsWithTasks = dbLists.map(l => ({
@@ -221,6 +227,10 @@ export default function App() {
         }));
         setLists(listsWithTasks);
         LS.set("wh_lists", listsWithTasks);
+      } else {
+        // Supabase lists empty - clear localStorage lists too
+        setLists([]);
+        LS.set("wh_lists", []);
       }
       if (dbActivity.length > 0) {
         const act = dbActivity.map(a => ({ id:a.id, msg:a.msg, userId:a.user_id, at:a.created_at }));
@@ -239,9 +249,9 @@ export default function App() {
     .finally(() => setLoading(false));
   }, []);
 
-  // ── Persist to localStorage (always) + Supabase (when configured) ──────
-  useEffect(() => { LS.set("wh_workers", workers); if (CLOUD_ENABLED) workers.forEach(w => sbUpsert("workers", { id:w.id, name:w.name, role:w.role, position:w.position||"Worker", avatar:w.avatar, pin:w.pin||"0000" })); }, [workers]);
-  useEffect(() => { LS.set("wh_lists", lists); if (CLOUD_ENABLED) { lists.forEach(l => { sbUpsert("lists", { id:l.id, title:l.title, due_time:l.dueTime||"-", color:l.color, is_rollover:l.isRollover||false, created_by:l.createdBy||null, assigned_to:l.assignedTo||[], schedule_mode:l.scheduleMode||"always", schedule_days:l.scheduleDays||[], schedule_date:l.scheduleDate||null }); l.tasks.forEach((t,i) => sbUpsert("tasks", { id:t.id, list_id:l.id, text:t.text, priority:t.priority||"none", task_assignees:t.taskAssignees||[], schedule_mode:t.scheduleMode||"always", days:t.days||[], start_date:t.startDate||null, done_by:t.doneBy||null, done_at:t.doneAt||null, note:t.note||null, note_by:t.noteBy||null, note_at:t.noteAt||null, original_due_date:t.originalDueDate||null, from_list:t._fromList||null, sort_order:i })); }); } }, [lists]);
+  // ── Persist to localStorage only ─────────────────────────────────────────
+  useEffect(() => { LS.set("wh_workers", workers); }, [workers]);
+  useEffect(() => { LS.set("wh_lists", lists); }, [lists]);
   useEffect(() => { LS.set("wh_activity", activityLog); }, [activityLog]);
   useEffect(() => { LS.set("wh_notifs", notifMap); }, [notifMap]);
   useEffect(() => { if (currentUser) LS.set("wh_user", currentUser); else localStorage.removeItem("wh_user"); }, [currentUser]);
