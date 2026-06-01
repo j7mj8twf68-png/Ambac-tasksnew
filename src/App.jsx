@@ -1612,6 +1612,18 @@ export default function App() {
                   {CLOUD_ENABLED ? "Cloud: Connected" : "Cloud: NOT Connected - check Vercel env vars"}
                 </div>
                 <button onClick={async () => {
+                  if (!CLOUD_ENABLED) { alert("Not connected!"); return; }
+                  const testId = "test-" + Date.now();
+                  alert("Testing... URL: " + (SB_URL ? SB_URL.slice(0,30) : "MISSING"));
+                  const result = await fetch(SB_URL + "/rest/v1/lists", {
+                    method: "POST",
+                    headers: { "Content-Type":"application/json", "apikey":SB_KEY, "Authorization":"Bearer "+SB_KEY, "Prefer":"return=representation" },
+                    body: JSON.stringify({ id:testId, title:"TEST-"+testId, due_time:"-", color:"#ff0000", is_rollover:false, assigned_to:[], schedule_mode:"always", schedule_days:[] })
+                  });
+                  const text = await result.text();
+                  alert("Status: " + result.status + " Response: " + text.slice(0,200));
+                }} style={{...s.rolloverTestBtn, background:"#7C3AED", marginTop:"8px"}}>&#x1F9EA; Test Supabase Write</button>
+                <button onClick={async () => {
                   if (!CLOUD_ENABLED) { alert("Supabase not connected."); return; }
                   let count = 0;
                   for (const l of lists) {
