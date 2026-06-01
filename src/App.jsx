@@ -1620,14 +1620,31 @@ export default function App() {
               <div style={s.rolloverInfoBox}>
                 <div style={s.rolloverInfoText}>Uncompleted tasks roll over at midnight into a new Rollover list.</div>
                 <button onClick={() => { LS.set("wh_last_rollover",null); window.location.reload(); }} style={s.rolloverTestBtn}>Trigger Rollover Now</button>
-                <button onClick={() => {
-                  const stored = LS.get("wh_lists",[]);
-                  const cleaned = stored.map(list => ({...list, tasks:list.tasks.map(t=>({...t,originalDueDate:null}))}));
-                  LS.set("wh_lists", cleaned); setLists(cleaned);
+                <button onClick={async () => {
+                  const cleaned = lists.map(list => ({...list, tasks:list.tasks.map(t=>({...t,originalDueDate:null}))}));
+                  setLists(cleaned);
+                  LS.set("wh_lists", cleaned);
+                  if (CLOUD_ENABLED) {
+                    for (const list of cleaned) {
+                      for (const t of list.tasks) {
+                        await sbUpsert("tasks", { id:t.id, list_id:list.id, text:t.text,
+                          priority:t.priority||"none", task_assignees:t.taskAssignees||[],
+                          schedule_mode:t.scheduleMode||"always", days:t.days||[],
+                          done_by:t.doneBy||null, done_at:t.doneAt||null,
+                          original_due_date:null });
+                      }
+                    }
+                  }
                   alert("Overdue data cleared.");
                 }} style={{...s.rolloverTestBtn, background:"#6B7280", marginTop:"8px"}}>Clear Overdue Data</button>
-                <button onClick={() => {
+                <button onClick={async () => {
                   if (window.confirm("Delete ALL lists and activity? Workers kept.")) {
+                    if (CLOUD_ENABLED) {
+                      await sbFetch("tasks?id=neq.placeholder", { method:"DELETE" });
+                      await sbFetch("lists?id=neq.placeholder", { method:"DELETE" });
+                      await sbFetch("activity?id=neq.placeholder", { method:"DELETE" });
+                      await sbFetch("notifications?id=neq.placeholder", { method:"DELETE" });
+                    }
                     LS.set("wh_lists",[]); LS.set("wh_activity",[]); LS.set("wh_notifs",{});
                     LS.set("wh_last_rollover",null); LS.set("wh_last_task_reset",null);
                     window.location.reload();
