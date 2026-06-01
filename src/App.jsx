@@ -468,11 +468,15 @@ export default function App() {
       const tasks = l.tasks.map(t => {
         if (t.id !== taskId) return t;
         const done = !t.doneBy;
+        const doneAt = done ? new Date().toISOString() : null;
+        if (CLOUD_ENABLED) sbUpsert("tasks", { id:t.id, list_id:listId, text:t.text, priority:t.priority||"none",
+          task_assignees:t.taskAssignees||[], schedule_mode:t.scheduleMode||"always", days:t.days||[],
+          done_by:done?currentUser.id:null, done_at:doneAt });
         if (done) {
           pushNotif(["mgr"], "Task Completed", currentUser.name + " completed: " + t.text, listId);
           log(currentUser.name + " completed: " + t.text, currentUser.id);
         }
-        return { ...t, doneBy: done ? currentUser.id : null, doneAt: done ? new Date().toISOString() : null };
+        return { ...t, doneBy: done ? currentUser.id : null, doneAt };
       });
       return { ...l, tasks };
     }));
@@ -500,12 +504,17 @@ export default function App() {
 
   const saveNote = (listId, taskId) => {
     const trimmed = noteText.trim();
+    const noteAt = trimmed ? new Date().toISOString() : null;
     setLists(prev => prev.map(l => {
       if (l.id!==listId) return l;
       return { ...l, tasks: l.tasks.map(t => {
         if (t.id!==taskId) return t;
+        if (CLOUD_ENABLED) sbUpsert("tasks", { id:t.id, list_id:listId, text:t.text, priority:t.priority||"none",
+          task_assignees:t.taskAssignees||[], schedule_mode:t.scheduleMode||"always", days:t.days||[],
+          done_by:t.doneBy||null, done_at:t.doneAt||null,
+          note:trimmed||null, note_by:trimmed?currentUser.id:null, note_at:noteAt });
         if (trimmed) pushNotif(["mgr"], "Note Added", currentUser.name + " added a note to: " + t.text, listId);
-        return { ...t, note: trimmed||null, noteBy: trimmed?currentUser.id:null, noteAt: trimmed?new Date().toISOString():null };
+        return { ...t, note: trimmed||null, noteBy: trimmed?currentUser.id:null, noteAt };
       })};
     }));
     setEditingNoteFor(null); setNoteText("");
@@ -544,6 +553,13 @@ export default function App() {
         scheduleMode:t.scheduleMode||"always", days:t.days||[], startDate:t.startDate||null,
         doneBy:null, doneAt:null, note:null, noteBy:null, noteAt:null, originalDueDate:null })) };
     setLists(prev => [newList, ...prev]);
+    if (CLOUD_ENABLED) {
+      sbUpsert("lists", { id:newList.id, title:newList.title, due_time:newList.dueTime, color:newList.color,
+        is_rollover:false, created_by:newList.createdBy, assigned_to:newList.assignedTo,
+        schedule_mode:newList.scheduleMode, schedule_days:newList.scheduleDays, schedule_date:newList.scheduleDate });
+      newList.tasks.forEach((t,i) => sbUpsert("tasks", { id:t.id, list_id:newList.id, text:t.text,
+        priority:t.priority||"none", task_assignees:[], schedule_mode:"always", days:[], sort_order:i }));
+    }
     pushNotif(newListAssigned, "New List Assigned", "\"" + newList.title + "\" has been assigned to you.", newList.id);
     log("Created list: " + newList.title, currentUser.id);
     setNewListTitle(""); setNewListDue(""); setNewListColor(COLORS[0]); setNewListAssigned([]); setNewTaskBuf([]);
@@ -552,7 +568,7 @@ export default function App() {
 
   const deleteList = (listId) => {
     setLists(prev => prev.filter(l => l.id!==listId));
-    if (CLOUD_ENABLED) sbDelete("lists", listId); // tasks cascade delete
+    if (CLOUD_ENABLED) sbDelete("lists", listId);
     log("Deleted a list", currentUser.id);
   };
 
@@ -567,6 +583,15 @@ export default function App() {
       ...l, title:editTitle.trim()||l.title, dueTime:editDue.trim()||"-",
       color:editColor, assignedTo:editAssigned, tasks:editTasks,
     }));
+    if (CLOUD_ENABLED) {
+      const l = { id:editingListId, title:editTitle.trim(), due_time:editDue.trim()||"-",
+        color:editColor, assigned_to:editAssigned };
+      sbUpsert("lists", l);
+      editTasks.forEach((t,i) => sbUpsert("tasks", { id:t.id, list_id:editingListId, text:t.text,
+        priority:t.priority||"none", task_assignees:t.taskAssignees||[], schedule_mode:t.scheduleMode||"always",
+        days:t.days||[], start_date:t.startDate||null, done_by:t.doneBy||null, done_at:t.doneAt||null,
+        note:t.note||null, note_by:t.noteBy||null, note_at:t.noteAt||null, sort_order:i }));
+    }
     setEditingListId(null);
   };
 
@@ -584,6 +609,7 @@ export default function App() {
     if (!newWorkerName.trim()) return;
     const w = { id:uid(), name:newWorkerName.trim(), role:"worker", position:newWorkerPosition, avatar:initials(newWorkerName.trim()), pin:"0000" };
     setWorkers(prev => [...prev, w]);
+    if (CLOUD_ENABLED) sbUpsert("workers", { id:w.id, name:w.name, role:w.role, position:w.position, avatar:w.avatar, pin:w.pin });
     log("Added worker: " + w.name, currentUser.id);
     setNewWorkerName(""); setNewWorkerPosition("Worker");
   };
