@@ -500,7 +500,13 @@ export default function App() {
   };
 
   const setTaskPriority = (listId, taskId, priority) => {
-    setLists(prev => prev.map(l => l.id!==listId ? l : { ...l, tasks: l.tasks.map(t => t.id!==taskId ? t : { ...t, priority }) }));
+    setLists(prev => prev.map(l => l.id!==listId ? l : { ...l, tasks: l.tasks.map(t => {
+      if (t.id!==taskId) return t;
+      if (CLOUD_ENABLED) sbUpsert("tasks", { id:t.id, list_id:listId, text:t.text, priority,
+        task_assignees:t.taskAssignees||[], schedule_mode:t.scheduleMode||"always", days:t.days||[],
+        done_by:t.doneBy||null, done_at:t.doneAt||null });
+      return { ...t, priority };
+    })}));
   };
 
   const toggleTaskAssignee = (listId, taskId, wId) => {
@@ -509,7 +515,11 @@ export default function App() {
       return { ...l, tasks: l.tasks.map(t => {
         if (t.id!==taskId) return t;
         const cur = t.taskAssignees||[];
-        return { ...t, taskAssignees: cur.includes(wId) ? cur.filter(x=>x!==wId) : [...cur,wId] };
+        const newAssignees = cur.includes(wId) ? cur.filter(x=>x!==wId) : [...cur,wId];
+        if (CLOUD_ENABLED) sbUpsert("tasks", { id:t.id, list_id:listId, text:t.text, priority:t.priority||"none",
+          task_assignees:newAssignees, schedule_mode:t.scheduleMode||"always", days:t.days||[],
+          done_by:t.doneBy||null, done_at:t.doneAt||null });
+        return { ...t, taskAssignees: newAssignees };
       })};
     }));
   };
@@ -539,6 +549,8 @@ export default function App() {
       startDate:newTaskScheduleMode==="oneTime"?newTaskStartDate:null,
       doneBy:null, doneAt:null, note:null, noteBy:null, noteAt:null, originalDueDate:null };
     setLists(prev => prev.map(l => l.id!==listId ? l : { ...l, tasks:[...l.tasks, newTask] }));
+    if (CLOUD_ENABLED) sbUpsert("tasks", { id:newTask.id, list_id:listId, text:newTask.text,
+      priority:newTask.priority||"none", task_assignees:[], schedule_mode:"always", days:[] });
     const list = getList(listId);
     if (list) pushNotif(list.assignedTo, "New Task Added", "\"" + newTask.text + "\" added to " + list.title, listId);
     setInlineTask(""); setNewTaskPriority("none"); setNewTaskScheduleMode("always"); setNewTaskDays([]); setNewTaskStartDate(""); setAddingTaskTo(null);
@@ -548,6 +560,9 @@ export default function App() {
     setLists(prev => prev.map(l => {
       if (l.id!==listId) return l;
       const tasks = l.tasks.map(t => ({ ...t, doneBy:null, doneAt:null }));
+      if (CLOUD_ENABLED) tasks.forEach(t => sbUpsert("tasks", { id:t.id, list_id:listId, text:t.text,
+        priority:t.priority||"none", task_assignees:t.taskAssignees||[], schedule_mode:t.scheduleMode||"always",
+        days:t.days||[], done_by:null, done_at:null }));
       return { ...l, tasks };
     }));
     const list = getList(listId);
@@ -1668,7 +1683,7 @@ export default function App() {
                   <div style={s.workerInfo}>
                     <div style={s.workerName}>{w.name}</div>
                     <div style={s.workerMeta}>
-                      <select value={w.position||"Worker"} onChange={e=>setWorkers(prev=>prev.map(u=>u.id===w.id?{...u,position:e.target.value}:u))} style={s.positionSelect}>
+                      <select value={w.position||"Worker"} onChange={e=>{ const pos=e.target.value; setWorkers(prev=>prev.map(u=>u.id===w.id?{...u,position:pos}:u)); if(CLOUD_ENABLED) sbUpsert("workers",{id:w.id,name:w.name,role:w.role,position:pos,avatar:w.avatar,pin:w.pin||"0000"}); }} style={s.positionSelect}>
                         {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
                       </select>
                     </div>
@@ -1701,7 +1716,7 @@ export default function App() {
                     <div style={s.workerName}>{w.name}</div>
                     <div style={{...s.positionBadge, background:w.position==="Lead"?"#FFF0E6":"#f0f0f0", color:w.position==="Lead"?"#E86A2B":"#888"}}>{w.position||"Worker"}</div>
                   </div>
-                  <input type="number" maxLength={4} value={w.pin||""} onChange={e=>{const v=e.target.value.slice(0,4); setWorkers(prev=>prev.map(u=>u.id===w.id?{...u,pin:v}:u));}}
+                  <input type="number" maxLength={4} value={w.pin||""} onChange={e=>{ const v=e.target.value.slice(0,4); setWorkers(prev=>prev.map(u=>u.id===w.id?{...u,pin:v}:u)); if(CLOUD_ENABLED&&v.length===4) sbUpsert("workers",{id:w.id,name:w.name,role:w.role,position:w.position||"Worker",avatar:w.avatar,pin:v}); }}
                     placeholder="0000" style={s.pinEditInput} />
                 </div>
               ))}
