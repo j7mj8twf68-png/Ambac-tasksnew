@@ -1066,7 +1066,11 @@ export default function App() {
               const dueMins = parseDueMins(list.dueTime);
               const minsUntilDue = dueMins - nowMins;
               const dueSoon = minsUntilDue > 0 && minsUntilDue <= 120 && pct < 100;
-              const overdue = minsUntilDue < 0 && pct < 100 && !list.isRollover;
+              // Overdue: due time passed AND today is a scheduled day for this list
+              const isScheduledToday = !list.scheduleMode || list.scheduleMode === "always" ||
+                (list.scheduleMode === "recurring" && list.scheduleDays && list.scheduleDays.includes(todayIdx())) ||
+                (list.scheduleMode === "oneTime" && list.scheduleDate && new Date(list.scheduleDate+"T00:00:00").toDateString() === new Date().toDateString());
+              const overdue = minsUntilDue < 0 && pct < 100 && !list.isRollover && isScheduledToday;
 
               // Urgency: red border = high priority tasks, amber = due soon, green = done
               const urgencyBorder = pct===100 ? "#16A34A" : highCount > 0 ? "#C41230" : dueSoon ? "#D97706" : list.color;
