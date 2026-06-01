@@ -1239,31 +1239,31 @@ export default function App() {
       const workerRowsHtml = workers.map(w => {
         const r = workerReport[w.id];
         const overdueRows = r.overdueTasks.sort((a,b)=>b.days-a.days).map(({task,list,days}) =>
-          "<tr><td style='padding:6px 10px;border-bottom:1px solid #eee;font-size:13px;'>" + (task.text||"") + "</td>" +
-          "<td style='padding:6px 10px;border-bottom:1px solid #eee;font-size:13px;color:#666;'>" + (list?list.title:"") + "</td>" +
-          "<td style='padding:6px 10px;border-bottom:1px solid #eee;font-size:13px;font-weight:700;color:#C41230;'>" + days + " day" + (days!==1?"s":"") + " overdue</td>" +
-          "<td style='padding:6px 10px;border-bottom:1px solid #eee;font-size:13px;color:#666;'>" + (task.priority||"none") + "</td></tr>"
+          "<tr><td style="padding:6px 10px;border-bottom:1px solid #eee;font-size:13px;'>" + (task.text||"") + "</td>" +
+          "<td style="padding:6px 10px;border-bottom:1px solid #eee;font-size:13px;color:#666;'>" + (list?list.title:"") + "</td>" +
+          "<td style="padding:6px 10px;border-bottom:1px solid #eee;font-size:13px;font-weight:700;color:#C41230;'>" + days + " day" + (days!==1?"s":"") + " overdue</td>" +
+          "<td style="padding:6px 10px;border-bottom:1px solid #eee;font-size:13px;color:#666;'>" + (task.priority||"none") + "</td></tr>"
         ).join("");
-        return "<div style='margin-bottom:24px;'>" +
-          "<div style='font-size:15px;font-weight:700;color:#111;margin-bottom:4px;'>" + w.name + " <span style=\"font-size:12px;color:#888;font-weight:400;\">(" + (w.position||"Worker") + ")</span></div>" +
-          "<div style='font-size:12px;color:#888;margin-bottom:8px;'>" + r.overdueTasks.length + " overdue &nbsp; " + r.completedToday.length + " done today &nbsp; " + r.completedLate.length + " completed late</div>" +
+        return "<div style="margin-bottom:24px;'>" +
+          "<div style="font-size:15px;font-weight:700;color:#111;margin-bottom:4px;'>" + w.name + " <span style=\"font-size:12px;color:#888;font-weight:400;\">(" + (w.position||"Worker") + ")</span></div>" +
+          "<div style="font-size:12px;color:#888;margin-bottom:8px;'>" + r.overdueTasks.length + " overdue &nbsp; " + r.completedToday.length + " done today &nbsp; " + r.completedLate.length + " completed late</div>" +
           (r.overdueTasks.length > 0 ?
-            "<table style='width:100%;border-collapse:collapse;'>" +
-            "<thead><tr style='background:#f5f5f5;'><th style='padding:6px 10px;text-align:left;font-size:11px;color:#888;'>TASK</th><th style='padding:6px 10px;text-align:left;font-size:11px;color:#888;'>LIST</th><th style='padding:6px 10px;text-align:left;font-size:11px;color:#888;'>OVERDUE</th><th style='padding:6px 10px;text-align:left;font-size:11px;color:#888;'>PRIORITY</th></tr></thead>" +
+            "<table style="width:100%;border-collapse:collapse;'>" +
+            "<thead><tr style="background:#f5f5f5;'><th style="padding:6px 10px;text-align:left;font-size:11px;color:#888;'>TASK</th><th style="padding:6px 10px;text-align:left;font-size:11px;color:#888;'>LIST</th><th style="padding:6px 10px;text-align:left;font-size:11px;color:#888;'>OVERDUE</th><th style="padding:6px 10px;text-align:left;font-size:11px;color:#888;'>PRIORITY</th></tr></thead>" +
             "<tbody>" + overdueRows + "</tbody></table>"
-            : "<div style='font-size:13px;color:#16A34A;'>No overdue tasks</div>") +
+            : "<div style="font-size:13px;color:#16A34A;'>No overdue tasks</div>") +
           "</div>";
-      }).join("<hr style='border:none;border-top:1px solid #eee;margin:16px 0;'/>");
+      }).join("<hr style="border:none;border-top:1px solid #eee;margin:16px 0;'/>");
 
       const listRowsHtml = lists.filter(l=>!l.isRollover).map(list => {
         const pct = progress(list);
         const od = list.tasks.filter(t=>t.originalDueDate&&!t.doneBy&&daysOverdue(t.originalDueDate)>0).length;
         return "<tr>" +
-          "<td style='padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;'>" + list.title + "</td>" +
-          "<td style='padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;color:#888;'>" + list.dueTime + "</td>" +
-          "<td style='padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;'>" + list.tasks.filter(t=>t.doneBy).length + "/" + list.tasks.length + "</td>" +
-          "<td style='padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;font-weight:700;color:" + (pct===100?"#16A34A":pct>50?"#D97706":"#C41230") + ";'>" + pct + "%</td>" +
-          "<td style='padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;color:" + (od>0?"#C41230":"#aaa") + ";font-weight:" + (od>0?700:400) + ";'>" + (od>0?od+" overdue":"-") + "</td>" +
+          "<td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;'>" + list.title + "</td>" +
+          "<td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;color:#888;'>" + list.dueTime + "</td>" +
+          "<td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;'>" + list.tasks.filter(t=>t.doneBy).length + "/" + list.tasks.length + "</td>" +
+          "<td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;font-weight:700;color:" + (pct===100?"#16A34A":pct>50?"#D97706":"#C41230") + ";'>" + pct + "%</td>" +
+          "<td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;color:" + (od>0?"#C41230":"#aaa") + ";font-weight:" + (od>0?700:400) + ";'>" + (od>0?od+" overdue":"-") + "</td>" +
           "</tr>";
       }).join("");
 
@@ -1279,17 +1279,17 @@ export default function App() {
         "@media print{body{padding:16px;}}</style></head><body>" +
         "<div class='header'><h1>AMBAC Materials Department - Task Report</h1><p>" + dateStr + "</p></div>" +
         "<div class='stats'>" +
-        "<div class='stat'><div class='stat-num' style='color:#C41230;'>" + totalOverdue + "</div><div class='stat-lbl'>OVERDUE</div></div>" +
-        "<div class='stat'><div class='stat-num' style='color:#D97706;'>" + totalPending + "</div><div class='stat-lbl'>PENDING</div></div>" +
-        "<div class='stat'><div class='stat-num' style='color:#16A34A;'>" + totalCompletedToday + "</div><div class='stat-lbl'>DONE TODAY</div></div>" +
-        "<div class='stat'><div class='stat-num' style='color:#7C3AED;'>" + totalCompletedLate + "</div><div class='stat-lbl'>COMPLETED LATE</div></div>" +
+        "<div class='stat'><div class='stat-num' style="color:#C41230;'>" + totalOverdue + "</div><div class='stat-lbl'>OVERDUE</div></div>" +
+        "<div class='stat'><div class='stat-num' style="color:#D97706;'>" + totalPending + "</div><div class='stat-lbl'>PENDING</div></div>" +
+        "<div class='stat'><div class='stat-num' style="color:#16A34A;'>" + totalCompletedToday + "</div><div class='stat-lbl'>DONE TODAY</div></div>" +
+        "<div class='stat'><div class='stat-num' style="color:#7C3AED;'>" + totalCompletedLate + "</div><div class='stat-lbl'>COMPLETED LATE</div></div>" +
         "</div>" +
         "<h2>Worker Breakdown</h2>" + workerRowsHtml +
         "<h2>List Completion</h2>" +
-        "<table style='width:100%;border-collapse:collapse;'>" +
-        "<thead><tr style='background:#f5f5f5;'><th style='padding:8px 10px;text-align:left;font-size:11px;color:#888;'>LIST</th><th style='padding:8px 10px;text-align:left;font-size:11px;color:#888;'>DUE</th><th style='padding:8px 10px;text-align:left;font-size:11px;color:#888;'>TASKS</th><th style='padding:8px 10px;text-align:left;font-size:11px;color:#888;'>COMPLETE</th><th style='padding:8px 10px;text-align:left;font-size:11px;color:#888;'>OVERDUE</th></tr></thead>" +
+        "<table style="width:100%;border-collapse:collapse;'>" +
+        "<thead><tr style="background:#f5f5f5;'><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;'>LIST</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;'>DUE</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;'>TASKS</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;'>COMPLETE</th><th style="padding:8px 10px;text-align:left;font-size:11px;color:#888;'>OVERDUE</th></tr></thead>" +
         "<tbody>" + listRowsHtml + "</tbody></table>" +
-        "<p style='margin-top:32px;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:12px;'>Generated by AMBAC Materials Department Task Manager - " + dateStr + "</p>" +
+        "<p style="margin-top:32px;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:12px;'>Generated by AMBAC Materials Department Task Manager - " + dateStr + "</p>" +
         "</body></html>";
 
       const win = window.open("", "_blank");
