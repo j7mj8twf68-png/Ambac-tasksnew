@@ -1125,6 +1125,7 @@ export default function App() {
   }
   // ── REPORT VIEW ────────────────────────────────────────────────────────────
   if (view === "report") {
+    try {
     const today2 = new Date(); today2.setHours(0,0,0,0);
 
     const workerReport = {};
@@ -1446,8 +1447,21 @@ export default function App() {
         </div>
       </Shell>
     );
-  }
   // ── ACTIVITY VIEW ─────────────────────────────────────────────────────────
+    } catch(err) {
+      return (
+        <Shell>
+          <div style={{flex:1,background:"#F2F2F0",padding:"40px 20px"}}>
+            <button onClick={() => setView("dashboard")} style={{background:"none",border:"none",color:"#C41230",fontSize:"14px",cursor:"pointer",marginBottom:"20px"}}>Back</button>
+            <div style={{background:"#FEE2E2",borderRadius:"14px",padding:"20px",color:"#C41230"}}>
+              <div style={{fontSize:"16px",fontWeight:700,marginBottom:"8px"}}>Report Error</div>
+              <div style={{fontSize:"13px"}}>{err.message}</div>
+            </div>
+          </div>
+        </Shell>
+      );
+    }
+  }
   if (view === "activity") {
     return (
       <Shell>
