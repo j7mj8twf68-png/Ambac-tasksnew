@@ -123,13 +123,13 @@ const responsiveCSS = [
 
 export default function App() {
   // ── State ────────────────────────────────────────────────────────────────
-  const [workers,      setWorkers]      = useState(() => LS.get("wh_workers", SEED_WORKERS));
-  const [lists,        setLists]        = useState(() => LS.get("wh_lists", SEED_LISTS));
+  const [workers,      setWorkers]      = useState(() => CLOUD_ENABLED ? [] : LS.get("wh_workers", SEED_WORKERS));
+  const [lists,        setLists]        = useState(() => CLOUD_ENABLED ? [] : LS.get("wh_lists", SEED_LISTS));
   const [currentUser,  setCurrentUser]  = useState(() => LS.get("wh_user", null));
   const [view,         setView]         = useState("login");
   const [activeListId, setActiveListId] = useState(null);
-  const [activityLog,  setActivityLog]  = useState(() => LS.get("wh_activity", []));
-  const [notifMap,     setNotifMap]     = useState(() => LS.get("wh_notifs", {}));
+  const [activityLog,  setActivityLog]  = useState(() => CLOUD_ENABLED ? [] : LS.get("wh_activity", []));
+  const [notifMap,     setNotifMap]     = useState(() => CLOUD_ENABLED ? {} : LS.get("wh_notifs", {}));
   const [notifOpen,    setNotifOpen]    = useState(false);
   const notifRef = useRef(null);
 
