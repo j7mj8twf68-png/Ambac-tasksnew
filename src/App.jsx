@@ -545,7 +545,7 @@ export default function App() {
   };
 
   // ── Lists ─────────────────────────────────────────────────────────────────
-  const createList = () => {
+  const createList = async () => {
     if (!newListTitle.trim()) return;
     const newList = { id:uid(), title:newListTitle.trim(), assignedTo:newListAssigned,
       dueTime:newListDue||"-", color:newListColor, isRollover:false, createdBy:currentUser.id,
@@ -556,11 +556,15 @@ export default function App() {
         doneBy:null, doneAt:null, note:null, noteBy:null, noteAt:null, originalDueDate:null })) };
     setLists(prev => [newList, ...prev]);
     if (CLOUD_ENABLED) {
-      sbUpsert("lists", { id:newList.id, title:newList.title, due_time:newList.dueTime, color:newList.color,
-        is_rollover:false, created_by:newList.createdBy, assigned_to:newList.assignedTo,
-        schedule_mode:newList.scheduleMode, schedule_days:newList.scheduleDays, schedule_date:newList.scheduleDate });
-      newList.tasks.forEach((t,i) => sbUpsert("tasks", { id:t.id, list_id:newList.id, text:t.text,
-        priority:t.priority||"none", task_assignees:[], schedule_mode:"always", days:[], sort_order:i }));
+      const result = await sbUpsert("lists", { id:newList.id, title:newList.title, due_time:newList.dueTime, color:newList.color,
+        is_rollover:false, created_by:newList.createdBy||null, assigned_to:newList.assignedTo||[],
+        schedule_mode:newList.scheduleMode||"always", schedule_days:newList.scheduleDays||[], schedule_date:newList.scheduleDate||null });
+      console.log("List saved to Supabase:", result);
+      for (let i=0; i<newList.tasks.length; i++) {
+        const t = newList.tasks[i];
+        await sbUpsert("tasks", { id:t.id, list_id:newList.id, text:t.text,
+          priority:t.priority||"none", task_assignees:[], schedule_mode:"always", days:[], sort_order:i });
+      }
     }
     pushNotif(newListAssigned, "New List Assigned", "\"" + newList.title + "\" has been assigned to you.", newList.id);
     log("Created list: " + newList.title, currentUser.id);
@@ -607,11 +611,14 @@ export default function App() {
   };
 
   // ── Workers ───────────────────────────────────────────────────────────────
-  const addWorker = () => {
+  const addWorker = async () => {
     if (!newWorkerName.trim()) return;
     const w = { id:uid(), name:newWorkerName.trim(), role:"worker", position:newWorkerPosition, avatar:initials(newWorkerName.trim()), pin:"0000" };
     setWorkers(prev => [...prev, w]);
-    if (CLOUD_ENABLED) sbUpsert("workers", { id:w.id, name:w.name, role:w.role, position:w.position, avatar:w.avatar, pin:w.pin });
+    if (CLOUD_ENABLED) {
+      const result = await sbUpsert("workers", { id:w.id, name:w.name, role:w.role, position:w.position, avatar:w.avatar, pin:w.pin });
+      console.log("Worker saved to Supabase:", result);
+    }
     log("Added worker: " + w.name, currentUser.id);
     setNewWorkerName(""); setNewWorkerPosition("Worker");
   };
