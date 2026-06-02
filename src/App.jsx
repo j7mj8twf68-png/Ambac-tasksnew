@@ -1003,7 +1003,13 @@ export default function App() {
   );
 
   // ── DASHBOARD VIEW ────────────────────────────────────────────────────────
-  const visibleLists = lists.filter(l => isManager || l.assignedTo.includes(currentUser?.id));
+  const isListScheduledToday = (list) => {
+    if (!list.scheduleMode || list.scheduleMode === "always") return true;
+    if (list.scheduleMode === "recurring") return list.scheduleDays && list.scheduleDays.includes(todayIdx());
+    if (list.scheduleMode === "oneTime") return list.scheduleDate && new Date(list.scheduleDate+"T00:00:00").toDateString() === new Date().toDateString();
+    return true;
+  };
+  const visibleLists = lists.filter(l => (isManager || l.assignedTo.includes(currentUser?.id)) && (l.isRollover || isListScheduledToday(l)));
   const totalDone = visibleLists.filter(l => progress(l)===100).length;
   const totalInProgress = visibleLists.filter(l => { const p=progress(l); return p>0&&p<100; }).length;
 
