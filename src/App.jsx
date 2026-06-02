@@ -319,10 +319,19 @@ export default function App() {
 
   // ── Rollover at midnight ──────────────────────────────────────────────────
   useEffect(() => {
-    const checkRollover = () => {
+    const checkRollover = async () => {
       const today = new Date().toDateString();
-      const lastRollover = LS.get("wh_last_rollover", null);
-      if (lastRollover === today) return;
+      const lastLocal = LS.get("wh_last_rollover", null);
+      if (lastLocal === today) return;
+
+      // Also check Supabase to avoid duplicate rollovers across devices
+      if (CLOUD_ENABLED) {
+        const state = await sbFetch("app_state?key=eq.last_rollover");
+        if (state && state.length > 0 && state[0].value === today) {
+          LS.set("wh_last_rollover", today);
+          return;
+        }
+      }
 
       const storedLists = LS.get("wh_lists", []);
       const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
@@ -363,6 +372,23 @@ export default function App() {
         const updatedLists = [...rolloverLists, ...storedLists];
         LS.set("wh_lists", updatedLists);
         setLists(updatedLists);
+
+        // Save rollover lists to Supabase
+        if (CLOUD_ENABLED) {
+          rolloverLists.forEach(l => {
+            sbUpsert("lists", { id:l.id, title:l.title, due_time:l.dueTime, color:l.color,
+              is_rollover:true, created_by:"mgr", assigned_to:l.assignedTo,
+              schedule_mode:"always", schedule_days:[], schedule_date:null });
+            l.tasks.forEach((t,i) => sbUpsert("tasks", { id:t.id, list_id:l.id, text:t.text,
+              priority:t.priority||"none", task_assignees:t.taskAssignees||[],
+              schedule_mode:"always", days:[], start_date:null,
+              done_by:null, done_at:null, note:t.note||null, note_by:t.noteBy||null,
+              note_at:t.noteAt||null, original_due_date:t.originalDueDate||null,
+              from_list:t._fromList||null, sort_order:i }));
+          });
+          // Save rollover date to Supabase app_state
+          sbUpsert("app_state", { key:"last_rollover", value:today });
+        }
 
         const storedNotifs = LS.get("wh_notifs", {});
         const updatedNotifs = { ...storedNotifs };
