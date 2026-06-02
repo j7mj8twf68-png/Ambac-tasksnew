@@ -295,7 +295,7 @@ export default function App() {
           setLists(listsWithTasks);
         }
       }).catch(e => console.warn("Auto-refresh failed:", e));
-    }, 5 * 60 * 1000);
+    }, 1 * 60 * 1000);
     return () => clearInterval(iv);
   }, []);
   useEffect(() => {
