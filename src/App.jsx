@@ -1009,7 +1009,7 @@ export default function App() {
     if (list.scheduleMode === "oneTime") return list.scheduleDate && new Date(list.scheduleDate+"T00:00:00").toDateString() === new Date().toDateString();
     return true;
   };
-  const visibleLists = lists.filter(l => (isManager || l.assignedTo.includes(currentUser?.id)) && (l.isRollover || isListScheduledToday(l)));
+  const visibleLists = lists.filter(l => (isManager || l.assignedTo.includes(currentUser?.id)) && (isManager || l.isRollover || isListScheduledToday(l)));
   const totalDone = visibleLists.filter(l => progress(l)===100).length;
   const totalInProgress = visibleLists.filter(l => { const p=progress(l); return p>0&&p<100; }).length;
 
