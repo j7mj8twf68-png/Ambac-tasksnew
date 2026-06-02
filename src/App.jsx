@@ -265,7 +265,39 @@ export default function App() {
   useEffect(() => { LS.set("wh_notifs", notifMap); }, [notifMap]);
   useEffect(() => { if (currentUser) LS.set("wh_user", currentUser); else localStorage.removeItem("wh_user"); }, [currentUser]);
 
-  // ── Confetti effect ───────────────────────────────────────────────────────
+  // ── Auto-refresh from Supabase every 5 minutes ───────────────────────────
+  useEffect(() => {
+    if (!CLOUD_ENABLED) return;
+    const iv = setInterval(() => {
+      Promise.all([
+        sbFetch("workers?order=created_at.asc"),
+        sbFetch("lists?order=created_at.desc"),
+        sbFetch("tasks?order=created_at.asc"),
+      ]).then(([dbWorkers, dbLists, dbTasks]) => {
+        if (dbWorkers.length > 0) {
+          setWorkers(dbWorkers.map(w => ({ id:w.id, name:w.name, role:w.role, position:w.position, avatar:w.avatar, pin:w.pin })));
+        }
+        if (dbLists.length > 0) {
+          const listsWithTasks = dbLists.map(l => ({
+            id:l.id, title:l.title, dueTime:l.due_time, color:l.color,
+            isRollover:l.is_rollover, createdBy:l.created_by,
+            assignedTo:l.assigned_to||[], scheduleMode:l.schedule_mode||"always",
+            scheduleDays:l.schedule_days||[], scheduleDate:l.schedule_date||null,
+            tasks: dbTasks.filter(t => t.list_id===l.id).map(t => ({
+              id:t.id, text:t.text, priority:t.priority||"none",
+              taskAssignees:t.task_assignees||[], scheduleMode:t.schedule_mode||"always",
+              days:t.days||[], startDate:t.start_date||null,
+              doneBy:t.done_by||null, doneAt:t.done_at||null,
+              note:t.note||null, noteBy:t.note_by||null, noteAt:t.note_at||null,
+              originalDueDate:t.original_due_date||null, _fromList:t.from_list||null,
+            }))
+          }));
+          setLists(listsWithTasks);
+        }
+      }).catch(e => console.warn("Auto-refresh failed:", e));
+    }, 5 * 60 * 1000);
+    return () => clearInterval(iv);
+  }, []);
   useEffect(() => {
     if (view !== "detail" || !activeListId) return;
     const list = lists.find(l => l.id === activeListId);
