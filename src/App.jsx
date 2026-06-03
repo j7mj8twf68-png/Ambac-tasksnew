@@ -1220,7 +1220,17 @@ export default function App() {
               const urgencyBorder = pct===100 ? "#16A34A" : highCount > 0 ? "#C41230" : dueSoon ? "#D97706" : list.color;
 
               return (
-                <button key={list.id} onClick={() => { setActiveListId(list.id); setView("detail"); }}
+                <button key={list.id} onClick={() => {
+                    setActiveListId(list.id); setView("detail");
+                    // Mark any notifications for this list as read
+                    setNotifMap(prev => ({
+                      ...prev,
+                      [currentUser.id]: (prev[currentUser.id]||[]).map(n =>
+                        n.listId === list.id ? {...n, read:true} : n
+                      )
+                    }));
+                    if (CLOUD_ENABLED) sbPatch("notifications", "user_id=eq."+currentUser.id+"&list_id=eq."+list.id+"&is_read=eq.false", { is_read:true });
+                  }}
                   style={{...s.card, boxShadow: highCount>0 ? "0 2px 12px rgba(196,18,48,0.18)" : "0 2px 8px rgba(0,0,0,0.06)"}}>
                   <div style={{...s.cardAccent, background:urgencyBorder}} />
                   <div style={s.cardBody}>
