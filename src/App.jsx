@@ -403,13 +403,35 @@ export default function App() {
     };
 
     // Recurring task reset
-    const resetRecurring = () => {
+    const resetRecurring = async () => {
       const today = new Date().toDateString();
       if (LS.get("wh_last_task_reset",null) === today) return;
-      setLists(prev => prev.map(l => ({
-        ...l, tasks: l.tasks.map(t => t.days && t.days.length > 0 && t.doneBy ? {...t, doneBy:null, doneAt:null} : t)
-      })));
+      // Check Supabase too
+      if (CLOUD_ENABLED) {
+        const state = await sbFetch("app_state?key=eq.last_task_reset");
+        if (state && state.length > 0 && state[0].value === today) {
+          LS.set("wh_last_task_reset", today);
+          return;
+        }
+      }
+      setLists(prev => {
+        const updated = prev.map(l => {
+          // Reset task-level recurring tasks
+          const taskReset = l.tasks.map(t => t.days && t.days.length > 0 && t.doneBy ? {...t, doneBy:null, doneAt:null} : t);
+          // Reset all tasks in list-level recurring lists
+          const listIsRecurring = l.scheduleMode === "recurring" && l.scheduleDays && l.scheduleDays.length > 0;
+          if (listIsRecurring) {
+            const resetTasks = taskReset.map(t => t.doneBy ? {...t, doneBy:null, doneAt:null} : t);
+            // Sync resets to Supabase
+            if (CLOUD_ENABLED) resetTasks.forEach(t => sbUpsert("tasks", { id:t.id, list_id:l.id, text:t.text, priority:t.priority||"none", task_assignees:t.taskAssignees||[], schedule_mode:t.scheduleMode||"always", days:t.days||[], done_by:null, done_at:null }));
+            return { ...l, tasks: resetTasks };
+          }
+          return { ...l, tasks: taskReset };
+        });
+        return updated;
+      });
       LS.set("wh_last_task_reset", today);
+      if (CLOUD_ENABLED) sbUpsert("app_state", { key:"last_task_reset", value:today });
     };
 
     checkRollover();
