@@ -171,6 +171,7 @@ export default function App() {
   const [editTitle,       setEditTitle]       = useState("");
   const [editDue,         setEditDue]         = useState("");
   const [editColor,       setEditColor]       = useState(COLORS[0]);
+  const [editPriority,    setEditPriority]    = useState("none");
   const [editAssigned,    setEditAssigned]    = useState([]);
   const [editTasks,       setEditTasks]       = useState([]);
   const [editTaskText,    setEditTaskText]    = useState("");
@@ -699,17 +700,18 @@ export default function App() {
   const openEditList = (list) => {
     setEditingListId(list.id); setEditTitle(list.title);
     setEditDue(list.dueTime==="-"?"":list.dueTime); setEditColor(list.color);
+    setEditPriority(list.priority||"none");
     setEditAssigned(list.assignedTo); setEditTasks([...list.tasks]);
   };
 
   const saveEditList = () => {
     setLists(prev => prev.map(l => l.id!==editingListId ? l : {
       ...l, title:editTitle.trim()||l.title, dueTime:editDue.trim()||"-",
-      color:editColor, assignedTo:editAssigned, tasks:editTasks,
+      color:editColor, assignedTo:editAssigned, tasks:editTasks, priority:editPriority,
     }));
     if (CLOUD_ENABLED) {
       const l = { id:editingListId, title:editTitle.trim(), due_time:editDue.trim()||"-",
-        color:editColor, assigned_to:editAssigned };
+        color:editColor, assigned_to:editAssigned, priority:editPriority };
       sbUpsert("lists", l);
       editTasks.forEach((t,i) => sbUpsert("tasks", { id:t.id, list_id:editingListId, text:t.text,
         priority:t.priority||"none", task_assignees:t.taskAssignees||[], schedule_mode:t.scheduleMode||"always",
@@ -1702,6 +1704,18 @@ export default function App() {
                   <div style={s.sectionLabel}>EDITING: {editTitle}</div>
                   <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} placeholder="Title" style={s.formInput} />
                   <input value={editDue} onChange={e=>setEditDue(e.target.value)} placeholder="Due time" style={s.formInput} />
+                  <label style={s.formLabel}>Priority</label>
+                  <div style={{display:"flex",gap:"8px",marginBottom:"8px"}}>
+                    {PRIORITIES.filter(p=>p.key!=="none").concat([{key:"none",label:"None",color:"#aaa",bg:"#f5f5f5"}]).map(p => (
+                      <button key={p.key} onClick={()=>setEditPriority(p.key)}
+                        style={{flex:1,borderRadius:"10px",border:"none",padding:"8px 4px",fontSize:"13px",fontWeight:700,cursor:"pointer",
+                          background:editPriority===p.key?p.bg:"#f0f0f0",
+                          color:editPriority===p.key?p.color:"#888",
+                          outline:editPriority===p.key?"2px solid "+p.color:"none"}}>
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
                   <div style={s.colorRow}>
                     {COLORS.map(c => <button key={c} onClick={()=>setEditColor(c)} style={{...s.colorDot,background:c,border:editColor===c?"3px solid #fff":"3px solid transparent"}} />)}
                   </div>
