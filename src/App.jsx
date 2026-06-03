@@ -151,6 +151,7 @@ export default function App() {
   const [newListTitle,    setNewListTitle]    = useState("");
   const [newListDue,      setNewListDue]      = useState("");
   const [newListColor,    setNewListColor]    = useState(COLORS[0]);
+  const [newListPriority, setNewListPriority] = useState("none");
   const [newListScheduleMode, setNewListScheduleMode] = useState("always");
   const [newListDays,     setNewListDays]     = useState([]);
   const [newListStartDate,setNewListStartDate]= useState("");
@@ -283,6 +284,7 @@ export default function App() {
             isRollover:l.is_rollover, createdBy:l.created_by,
             assignedTo:l.assigned_to||[], scheduleMode:l.schedule_mode||"always",
             scheduleDays:l.schedule_days||[], scheduleDate:l.schedule_date||null,
+            priority:l.priority||"none",
             tasks: dbTasks.filter(t => t.list_id===l.id).map(t => ({
               id:t.id, text:t.text, priority:t.priority||"none",
               taskAssignees:t.task_assignees||[], scheduleMode:t.schedule_mode||"always",
@@ -663,6 +665,7 @@ export default function App() {
     if (!newListTitle.trim()) return;
     const newList = { id:uid(), title:newListTitle.trim(), assignedTo:newListAssigned,
       dueTime:newListDue||"-", color:newListColor, isRollover:false, createdBy:currentUser.id,
+      priority:newListPriority,
       scheduleMode:newListScheduleMode, scheduleDays:newListScheduleMode==="recurring"?newListDays:[],
       scheduleDate:newListScheduleMode==="oneTime"?newListStartDate:null,
       tasks: newTaskBuf.map(t => ({ id:uid(), text:t.text, priority:t.priority||"none", taskAssignees:[],
@@ -672,7 +675,8 @@ export default function App() {
     if (CLOUD_ENABLED) {
       const result = await sbUpsert("lists", { id:newList.id, title:newList.title, due_time:newList.dueTime, color:newList.color,
         is_rollover:false, created_by:newList.createdBy||null, assigned_to:newList.assignedTo||[],
-        schedule_mode:newList.scheduleMode||"always", schedule_days:newList.scheduleDays||[], schedule_date:newList.scheduleDate||null });
+        schedule_mode:newList.scheduleMode||"always", schedule_days:newList.scheduleDays||[], schedule_date:newList.scheduleDate||null,
+        priority:newList.priority||"none" });
       console.log("List saved to Supabase:", result);
       for (let i=0; i<newList.tasks.length; i++) {
         const t = newList.tasks[i];
@@ -683,7 +687,7 @@ export default function App() {
     pushNotif(newListAssigned, "New List Assigned", "\"" + newList.title + "\" has been assigned to you.", newList.id);
     log("Created list: " + newList.title, currentUser.id);
     setNewListTitle(""); setNewListDue(""); setNewListColor(COLORS[0]); setNewListAssigned([]); setNewTaskBuf([]);
-    setNewListScheduleMode("always"); setNewListDays([]); setNewListStartDate("");
+    setNewListPriority("none"); setNewListScheduleMode("always"); setNewListDays([]); setNewListStartDate("");
   };
 
   const deleteList = (listId) => {
@@ -867,7 +871,14 @@ export default function App() {
           <button onClick={() => setView("dashboard")} style={s.backBtn}>&#x2190; Back</button>
           <div style={s.detailTitleArea}>
             <div style={s.detailTitle}>{current.title}</div>
-            <div style={s.detailMeta}>{current.dueTime !== "-" ? "Due " + current.dueTime : ""} {current.isRollover ? " - Rollover" : ""}</div>
+            <div style={s.detailMeta}>
+              {current.dueTime !== "-" ? "Due " + current.dueTime : ""} {current.isRollover ? " - Rollover" : ""}
+              {current.priority && current.priority !== "none" && (
+                <span style={{marginLeft:"6px", background:getPriority(current.priority).bg, color:getPriority(current.priority).color, borderRadius:"6px", padding:"1px 8px", fontSize:"11px", fontWeight:800}}>
+                  {getPriority(current.priority).label.toUpperCase()}
+                </span>
+              )}
+            </div>
           </div>
           {isManager && <button onClick={() => resetList(current.id)} style={s.resetBtn}>Reset</button>}
         </div>
@@ -1168,6 +1179,11 @@ export default function App() {
                     <div style={s.cardTitleRow}>
                       <div style={s.cardTitle}>{list.title}</div>
                       <div style={{display:"flex", gap:"4px", flexWrap:"wrap", justifyContent:"flex-end"}}>
+                        {list.priority && list.priority !== "none" && pct < 100 && (
+                          <span style={{...s.priorityPill, background:getPriority(list.priority).bg, color:getPriority(list.priority).color, fontSize:"10px", fontWeight:800, padding:"2px 8px"}}>
+                            {getPriority(list.priority).label.toUpperCase()}
+                          </span>
+                        )}
                         {highCount > 0 && pct < 100 && (
                           <span style={s.highPriorityBadge}>{highCount} HIGH</span>
                         )}
@@ -1624,6 +1640,18 @@ export default function App() {
               {newListScheduleMode==="oneTime" && (
                 <input type="date" value={newListStartDate} onChange={e=>setNewListStartDate(e.target.value)} style={s.formInput} />
               )}
+              <label style={s.formLabel}>Priority</label>
+              <div style={{display:"flex",gap:"8px",marginBottom:"8px"}}>
+                {PRIORITIES.filter(p=>p.key!=="none").concat([{key:"none",label:"None",color:"#aaa",bg:"#f5f5f5"}]).map(p => (
+                  <button key={p.key} onClick={()=>setNewListPriority(p.key)}
+                    style={{flex:1,borderRadius:"10px",border:"none",padding:"8px 4px",fontSize:"13px",fontWeight:700,cursor:"pointer",
+                      background:newListPriority===p.key?p.bg:"#f0f0f0",
+                      color:newListPriority===p.key?p.color:"#888",
+                      outline:newListPriority===p.key?"2px solid "+p.color:"none"}}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
               <label style={s.formLabel}>Color</label>
               <div style={s.colorRow}>
                 {COLORS.map(c => (
