@@ -535,7 +535,23 @@ export default function App() {
     setPinTarget(null); setPinEntry("");
   };
 
-  // ── Tasks ─────────────────────────────────────────────────────────────────
+  const trackLeaderboard = (list) => {
+    if (!list.dueTime || list.dueTime === "-") return;
+    const dueMins = parseDueMins(list.dueTime);
+    const nowMins2 = new Date().getHours()*60 + new Date().getMinutes();
+    const onTime = dueMins === 9999 || nowMins2 <= dueMins;
+    const owners = [...new Set(list.assignedTo)];
+    const scores = LS.get("wh_leaderboard", {});
+    owners.forEach(wId => {
+      if (!scores[wId]) scores[wId] = { onTime:0, total:0 };
+      scores[wId].total++;
+      if (onTime) scores[wId].onTime++;
+    });
+    LS.set("wh_leaderboard", scores);
+    if (CLOUD_ENABLED) sbUpsert("app_state", { key:"leaderboard", value:JSON.stringify(scores) });
+  };
+
+
   const toggleTask = (listId, taskId) => {
     setLists(prev => prev.map(l => {
       if (l.id !== listId) return l;
@@ -552,6 +568,9 @@ export default function App() {
         }
         return { ...t, doneBy: done ? currentUser.id : null, doneAt };
       });
+      const wasComplete = l.tasks.every(t => t.doneBy);
+      const nowComplete = tasks.every(t => t.doneBy);
+      if (!wasComplete && nowComplete) trackLeaderboard(l);
       return { ...l, tasks };
     }));
   };
@@ -801,11 +820,19 @@ export default function App() {
                 const unread = notifs.filter(n => !n.read).length;
                 const avatarBg = user.role==="manager" ? "#C41230" : user.position==="Lead" ? "#9B0E25" : "#0D2240";
                 const borderColor = user.role==="manager" ? "#C41230" : user.position==="Lead" ? "#9B0E25" : "#e0e0e0";
+                // Check if this worker is top of leaderboard
+                const scores = LS.get("wh_leaderboard", {});
+                const workerRanked = workers.map(w => {
+                  const s = scores[w.id]||{onTime:0,total:0};
+                  return { id:w.id, pct: s.total===0?0:Math.round(s.onTime/s.total*100) };
+                }).sort((a,b) => b.pct-a.pct);
+                const isTopWorker = user.role!=="manager" && workerRanked.length>0 && workerRanked[0].id===user.id && workerRanked[0].pct>0;
                 return (
                   <button key={user.id} onClick={() => selectUser(user)} style={{...s.loginUserBtn, borderColor}}>
                     <div style={{position:"relative"}}>
                       <div style={{...s.loginAvatar, background:avatarBg}}>{user.avatar||initials(user.name)}</div>
                       {unread > 0 && <div style={s.loginBadge}>{unread > 9 ? "9+" : unread}</div>}
+                      {isTopWorker && <div style={{position:"absolute",top:"-14px",left:"50%",transform:"translateX(-50%)",fontSize:"18px",lineHeight:1,pointerEvents:"none"}}>&#x1F451;</div>}
                     </div>
                     <div style={s.loginName}>{user.name}</div>
                     <div style={s.loginRole}>{user.role==="manager" ? "Manager" : (user.position||"Worker")}</div>
@@ -1361,7 +1388,7 @@ export default function App() {
 
           {/* Tab row */}
           <div style={s.reportTabRow}>
-            {[["overview","Overview"],["trends","Reason Trends"]].map(([key,label]) => (
+            {[["overview","Overview"],["trends","Reason Trends"],["leaderboard","Leaderboard"]].map(([key,label]) => (
               <button key={key} onClick={() => setReportTab(key)}
                 style={{...s.reportTabBtn, background:reportTab===key?"#0D2240":"#f0f0f0", color:reportTab===key?"#fff":"#555"}}>
                 {label}
@@ -1519,6 +1546,71 @@ export default function App() {
               )}
             </div>
           )}
+
+          {/* Leaderboard tab */}
+          {reportTab === "leaderboard" && (() => {
+            const scores = LS.get("wh_leaderboard", {});
+            const workerScores = workers.map(w => {
+              const saved = scores[w.id] || { onTime:0, total:0 };
+              const pct = saved.total === 0 ? 0 : Math.round(saved.onTime / saved.total * 100);
+              return { worker:w, onTime:saved.onTime, total:saved.total, pct };
+            }).sort((a,b) => b.pct - a.pct || b.onTime - a.onTime);
+
+            return (
+              <div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}>
+                  <div style={s.sectionLabel}>COMPLETION LEADERBOARD</div>
+                  {isManager && (
+                    <button onClick={() => {
+                      if (window.confirm("Reset all leaderboard scores?")) {
+                        LS.set("wh_leaderboard", {});
+                        if (CLOUD_ENABLED) sbUpsert("app_state", { key:"leaderboard", value:"{}" });
+                        alert("Leaderboard reset!");
+                      }
+                    }} style={{background:"#f0f0f0",border:"none",borderRadius:"8px",padding:"6px 12px",fontSize:"12px",fontWeight:700,color:"#888",cursor:"pointer"}}>
+                      Reset Scores
+                    </button>
+                  )}
+                </div>
+                {workerScores.every(w => w.total === 0) ? (
+                  <div style={s.trendsEmpty}>
+                    <div style={{fontSize:"32px",marginBottom:"12px"}}>&#x1F3C6;</div>
+                    <div style={{fontSize:"15px",fontWeight:700,color:"#333",marginBottom:"6px"}}>No scores yet</div>
+                    <div style={{fontSize:"13px",color:"#aaa",textAlign:"center",lineHeight:"1.6"}}>Scores are tracked as workers complete lists on time. Check back after lists have been completed.</div>
+                  </div>
+                ) : (
+                  workerScores.map((ws, idx) => {
+                    const isTop = idx === 0 && ws.pct > 0;
+                    const medal = idx === 0 ? "&#x1F947;" : idx === 1 ? "&#x1F948;" : idx === 2 ? "&#x1F949;" : "";
+                    return (
+                      <div key={ws.worker.id} style={{...s.leaderboardCard, border:isTop?"2px solid #F59E0B":"2px solid transparent", background:isTop?"#FFFBEB":"#fff"}}>
+                        <div style={s.leaderboardRank}>
+                          {medal ? <span dangerouslySetInnerHTML={{__html:medal}} /> : <span style={{color:"#aaa",fontWeight:700,fontSize:"14px"}}>{"#"+(idx+1)}</span>}
+                        </div>
+                        <div style={{...s.workerReportAvatar,background:ws.worker.position==="Lead"?"#9B0E25":"#0D2240",width:"40px",height:"40px",fontSize:"14px",position:"relative"}}>
+                          {isTop && <span style={{position:"absolute",top:"-10px",right:"-10px",fontSize:"16px"}}>&#x1F451;</span>}
+                          {ws.worker.avatar}
+                        </div>
+                        <div style={{flex:1,marginLeft:"4px"}}>
+                          <div style={{fontSize:"15px",fontWeight:700,color:"#111"}}>{ws.worker.name}</div>
+                          <div style={{fontSize:"12px",color:"#888",marginBottom:"4px"}}>{ws.onTime} of {ws.total} lists on time</div>
+                          <div style={{height:"6px",background:"#f0f0f0",borderRadius:"99px",overflow:"hidden"}}>
+                            <div style={{height:"100%",width:ws.pct+"%",background:ws.pct>=80?"#16A34A":ws.pct>=50?"#D97706":"#C41230",borderRadius:"99px"}} />
+                          </div>
+                        </div>
+                        <div style={{fontSize:"22px",fontWeight:900,color:ws.pct>=80?"#16A34A":ws.pct>=50?"#D97706":"#C41230",minWidth:"52px",textAlign:"right"}}>
+                          {ws.pct}%
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div style={{background:"#f5f5f5",borderRadius:"12px",padding:"12px 14px",marginTop:"8px",fontSize:"12px",color:"#888",lineHeight:"1.6"}}>
+                  Score = % of assigned lists completed before the due time. If a list has multiple workers, all share the result.
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </Shell>
     );
@@ -2143,6 +2235,8 @@ const s = {
   trendNoteMeta: { fontSize:"11px", color:"#aaa" },
   trendMore: { fontSize:"12px", color:"#aaa", fontStyle:"italic", marginTop:"4px" },
   trendsEmpty: { textAlign:"center", padding:"40px 20px", color:"#aaa" },
+  leaderboardCard: { display:"flex", alignItems:"center", gap:"12px", background:"#fff", borderRadius:"16px", padding:"14px 16px", marginBottom:"10px", boxShadow:"0 1px 6px rgba(0,0,0,0.06)" },
+  leaderboardRank: { width:"28px", textAlign:"center", fontSize:"20px", flexShrink:0 },
   workerTrendCard: { background:"#fff", borderRadius:"14px", padding:"14px 16px", marginBottom:"10px", boxShadow:"0 1px 6px rgba(0,0,0,0.06)" },
   workerThemeBreakdown: { display:"flex", flexWrap:"wrap", gap:"6px", marginTop:"10px" },
   workerThemeChip: { borderRadius:"8px", padding:"4px 10px", fontSize:"11px", fontWeight:700 },
