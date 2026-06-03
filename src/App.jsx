@@ -227,6 +227,7 @@ export default function App() {
           isRollover:l.is_rollover, createdBy:l.created_by,
           assignedTo:l.assigned_to||[], scheduleMode:l.schedule_mode||"always",
           scheduleDays:l.schedule_days||[], scheduleDate:l.schedule_date||null,
+          priority:l.priority||"none",
           tasks: dbTasks.filter(t => t.list_id===l.id).map(t => ({
             id:t.id, text:t.text, priority:t.priority||"none",
             taskAssignees:t.task_assignees||[], scheduleMode:t.schedule_mode||"always",
