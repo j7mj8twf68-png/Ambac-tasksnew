@@ -1137,7 +1137,10 @@ export default function App() {
                 (list.scheduleMode === "recurring" && list.scheduleDays && list.scheduleDays.includes(todayIdx())) ||
                 (list.scheduleMode === "oneTime" && list.scheduleDate && new Date(list.scheduleDate+"T00:00:00").toDateString() === new Date().toDateString());
               const dueSoon = minsUntilDue > 0 && minsUntilDue <= 120 && pct < 100 && isScheduledToday;
-              const overdue = minsUntilDue < 0 && pct < 100 && !list.isRollover && isScheduledToday;
+              // A one-time list whose date has passed is also overdue
+              const pastDate = list.scheduleMode === "oneTime" && list.scheduleDate &&
+                new Date(list.scheduleDate+"T00:00:00") < new Date(new Date().toDateString());
+              const overdue = (minsUntilDue < 0 && isScheduledToday || pastDate) && pct < 100 && !list.isRollover;
 
               // Urgency: red border = high priority tasks, amber = due soon, green = done
               const urgencyBorder = pct===100 ? "#16A34A" : highCount > 0 ? "#C41230" : dueSoon ? "#D97706" : list.color;
