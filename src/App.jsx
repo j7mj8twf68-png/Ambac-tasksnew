@@ -341,69 +341,38 @@ export default function App() {
       const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
       const yStr = yesterday.toISOString().slice(0,10);
 
-      const workerIds = [...new Set(storedLists.flatMap(l => l.isRollover ? [] : l.assignedTo))];
-      const workerTaskMap = {};
-      workerIds.forEach(id => { workerTaskMap[id] = []; });
-
-      storedLists.forEach(list => {
-        if (list.isRollover) return;
-        list.tasks.forEach(task => {
-          if (task.doneBy) return;
-          const taskOwners = (task.taskAssignees && task.taskAssignees.length > 0) ? task.taskAssignees : list.assignedTo;
-          taskOwners.forEach(wId => {
-            if (!workerTaskMap[wId]) return;
-            workerTaskMap[wId].push({
-              ...task,
-              id: uid(),
-              doneBy: null, doneAt: null,
-              _fromList: list.title,
-              originalDueDate: task.originalDueDate || yStr,
-            });
-          });
+      // Instead of creating rollover lists, just mark incomplete tasks with originalDueDate
+      // so they show as overdue on their original list card
+      let anyUpdated = false;
+      const updatedLists = storedLists.map(list => {
+        if (list.isRollover) return list;
+        const tasks = list.tasks.map(task => {
+          if (task.doneBy || task.originalDueDate) return task;
+          anyUpdated = true;
+          return { ...task, originalDueDate: yStr };
         });
+        return { ...list, tasks };
       });
 
-      const rolloverLists = workerIds.filter(id => workerTaskMap[id].length > 0).map(wId => {
-        const w = [...SEED_WORKERS, ...LS.get("wh_workers",[])].find(x => x.id === wId);
-        return {
-          id: uid(), title: "Rollover - " + (w ? w.name : wId),
-          assignedTo: [wId], dueTime: "11:59 PM", color: "#C41230",
-          isRollover: true, createdBy: "mgr", tasks: workerTaskMap[wId],
-        };
-      });
-
-      if (rolloverLists.length > 0) {
-        const updatedLists = [...rolloverLists, ...storedLists];
+      if (anyUpdated) {
         LS.set("wh_lists", updatedLists);
         setLists(updatedLists);
-
-        // Save rollover lists to Supabase
         if (CLOUD_ENABLED) {
-          rolloverLists.forEach(l => {
-            sbUpsert("lists", { id:l.id, title:l.title, due_time:l.dueTime, color:l.color,
-              is_rollover:true, created_by:"mgr", assigned_to:l.assignedTo,
-              schedule_mode:"always", schedule_days:[], schedule_date:null });
-            l.tasks.forEach((t,i) => sbUpsert("tasks", { id:t.id, list_id:l.id, text:t.text,
-              priority:t.priority||"none", task_assignees:t.taskAssignees||[],
-              schedule_mode:"always", days:[], start_date:null,
-              done_by:null, done_at:null, note:t.note||null, note_by:t.noteBy||null,
-              note_at:t.noteAt||null, original_due_date:t.originalDueDate||null,
-              from_list:t._fromList||null, sort_order:i }));
+          updatedLists.forEach(list => {
+            list.tasks.forEach((t,i) => {
+              if (t.originalDueDate === yStr) {
+                sbUpsert("tasks", { id:t.id, list_id:list.id, text:t.text,
+                  priority:t.priority||"none", task_assignees:t.taskAssignees||[],
+                  schedule_mode:t.scheduleMode||"always", days:t.days||[],
+                  done_by:t.doneBy||null, done_at:t.doneAt||null,
+                  original_due_date:yStr, sort_order:i });
+              }
+            });
           });
-          // Save rollover date to Supabase app_state
-          sbUpsert("app_state", { key:"last_rollover", value:today });
         }
-
-        const storedNotifs = LS.get("wh_notifs", {});
-        const updatedNotifs = { ...storedNotifs };
-        const n = { id:uid(), title:"Rollover Created", body:`${rolloverLists.length} rollover list(s) created for today.`, listId:null, at:new Date().toISOString(), read:false };
-        ["mgr", ...workerIds.filter(id => workerTaskMap[id].length > 0)].forEach(uid2 => {
-          updatedNotifs[uid2] = [n, ...(updatedNotifs[uid2]||[])].slice(0,50);
-        });
-        LS.set("wh_notifs", updatedNotifs);
-        setNotifMap(updatedNotifs);
       }
       LS.set("wh_last_rollover", today);
+      if (CLOUD_ENABLED) sbUpsert("app_state", { key:"last_rollover", value:today });
     };
 
     // Recurring task reset
@@ -1748,8 +1717,7 @@ export default function App() {
 
               <div style={s.sectionLabel}>ROLLOVER</div>
               <div style={s.rolloverInfoBox}>
-                <div style={s.rolloverInfoText}>Uncompleted tasks roll over at midnight into a new Rollover list.</div>
-                <button onClick={() => { LS.set("wh_last_rollover",null); window.location.reload(); }} style={s.rolloverTestBtn}>Trigger Rollover Now</button>
+                <div style={s.rolloverInfoText}>Incomplete tasks automatically show an overdue badge on their original list card the next day. No separate rollover lists are created.</div>
                 <button onClick={async () => {
                   const cleaned = lists.map(list => ({...list, tasks:list.tasks.map(t=>({...t,originalDueDate:null}))}));
                   setLists(cleaned);
