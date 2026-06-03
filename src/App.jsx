@@ -867,7 +867,13 @@ export default function App() {
                   const s = scores[w.id]||{onTime:0,total:0};
                   return { id:w.id, pct: s.total===0?0:Math.round(s.onTime/s.total*100) };
                 }).sort((a,b) => b.pct-a.pct);
-                const isTopWorker = user.role!=="manager" && workerRanked.length>0 && workerRanked[0].id===user.id && workerRanked[0].pct>0;
+                // All workers tied at top pct get the crown
+                const topPct = workerRanked[0]?.pct || 0;
+                const isTopWorker = user.role!=="manager" && topPct > 0 && (() => {
+                  const s = scores[user.id]||{onTime:0,total:0};
+                  const pct = s.total===0?0:Math.round(s.onTime/s.total*100);
+                  return pct === topPct;
+                })();
                 return (
                   <button key={user.id} onClick={() => selectUser(user)} style={{...s.loginUserBtn, borderColor}}>
                     <div style={{position:"relative"}}>
@@ -1595,7 +1601,14 @@ export default function App() {
               const saved = scores[w.id] || { onTime:0, total:0 };
               const pct = saved.total === 0 ? 0 : Math.round(saved.onTime / saved.total * 100);
               return { worker:w, onTime:saved.onTime, total:saved.total, pct };
-            }).sort((a,b) => b.pct - a.pct || b.onTime - a.onTime);
+            }).sort((a,b) => b.pct - a.pct);
+
+            // Assign ranks with ties — same pct = same rank
+            let rank = 1;
+            const ranked = workerScores.map((ws, idx) => {
+              if (idx > 0 && ws.pct < workerScores[idx-1].pct) rank = idx + 1;
+              return { ...ws, rank };
+            });
 
             return (
               <div>
@@ -1613,27 +1626,31 @@ export default function App() {
                     </button>
                   )}
                 </div>
-                {workerScores.every(w => w.total === 0) ? (
+                {ranked.every(w => w.total === 0) ? (
                   <div style={s.trendsEmpty}>
                     <div style={{fontSize:"32px",marginBottom:"12px"}}>&#x1F3C6;</div>
                     <div style={{fontSize:"15px",fontWeight:700,color:"#333",marginBottom:"6px"}}>No scores yet</div>
                     <div style={{fontSize:"13px",color:"#aaa",textAlign:"center",lineHeight:"1.6"}}>Scores are tracked as workers complete lists on time. Check back after lists have been completed.</div>
                   </div>
                 ) : (
-                  workerScores.map((ws, idx) => {
-                    const isTop = idx === 0 && ws.pct > 0;
-                    const medal = idx === 0 ? "&#x1F947;" : idx === 1 ? "&#x1F948;" : idx === 2 ? "&#x1F949;" : "";
+                  ranked.map((ws, idx) => {
+                    const isTop = ws.rank === 1 && ws.pct > 0;
+                    const isTied = ranked.filter(r => r.rank === ws.rank).length > 1;
+                    const medal = ws.rank === 1 ? "&#x1F947;" : ws.rank === 2 ? "&#x1F948;" : ws.rank === 3 ? "&#x1F949;" : "";
                     return (
                       <div key={ws.worker.id} style={{...s.leaderboardCard, border:isTop?"2px solid #F59E0B":"2px solid transparent", background:isTop?"#FFFBEB":"#fff"}}>
                         <div style={s.leaderboardRank}>
-                          {medal ? <span dangerouslySetInnerHTML={{__html:medal}} /> : <span style={{color:"#aaa",fontWeight:700,fontSize:"14px"}}>{"#"+(idx+1)}</span>}
+                          {medal ? <span dangerouslySetInnerHTML={{__html:medal}} /> : <span style={{color:"#aaa",fontWeight:700,fontSize:"13px"}}>{"#"+ws.rank}</span>}
                         </div>
                         <div style={{...s.workerReportAvatar,background:ws.worker.position==="Lead"?"#9B0E25":"#0D2240",width:"40px",height:"40px",fontSize:"14px",position:"relative"}}>
                           {isTop && <span style={{position:"absolute",top:"-10px",right:"-10px",fontSize:"16px"}}>&#x1F451;</span>}
                           {ws.worker.avatar}
                         </div>
                         <div style={{flex:1,marginLeft:"4px"}}>
-                          <div style={{fontSize:"15px",fontWeight:700,color:"#111"}}>{ws.worker.name}</div>
+                          <div style={{fontSize:"15px",fontWeight:700,color:"#111"}}>
+                            {ws.worker.name}
+                            {isTied && <span style={{fontSize:"11px",color:"#D97706",fontWeight:700,marginLeft:"6px"}}>TIE</span>}
+                          </div>
                           <div style={{fontSize:"12px",color:"#888",marginBottom:"4px"}}>{ws.onTime} of {ws.total} lists on time</div>
                           <div style={{height:"6px",background:"#f0f0f0",borderRadius:"99px",overflow:"hidden"}}>
                             <div style={{height:"100%",width:ws.pct+"%",background:ws.pct>=80?"#16A34A":ws.pct>=50?"#D97706":"#C41230",borderRadius:"99px"}} />
