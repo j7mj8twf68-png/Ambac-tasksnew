@@ -971,7 +971,7 @@ export default function App() {
                     </button>
                   )}
                   <button onClick={() => { setEditingNoteFor(isEditingNote?null:task.id); setNoteText(task.note||""); }}
-                    style={{...s.noteBtn, color:task.note?"#C41230":"#ccc"}}>N</button>
+                    style={{...s.noteBtn, color:task.note?"#C41230":"#ccc", fontSize:"11px", padding:"4px 8px"}}>Note</button>
                   {isManager && <button onClick={() => deleteTask(current.id,task.id)} style={s.taskDeleteBtn}>X</button>}
                 </div>
 
