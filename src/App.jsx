@@ -1164,7 +1164,7 @@ export default function App() {
               const highCount = list.tasks.filter(t => !t.doneBy && t.priority==="high").length;
               const dueMins = parseDueMins(list.dueTime);
               const minsUntilDue = dueMins - nowMins;
-              const dueSoon = minsUntilDue > 0 && minsUntilDue <= 120 && pct < 100;
+              const dueSoon = minsUntilDue > 0 && minsUntilDue <= 120 && pct < 100 && isScheduledToday;
               // Overdue: due time passed AND today is a scheduled day for this list
               const isScheduledToday = !list.scheduleMode || list.scheduleMode === "always" ||
                 (list.scheduleMode === "recurring" && list.scheduleDays && list.scheduleDays.includes(todayIdx())) ||
