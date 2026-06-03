@@ -268,7 +268,48 @@ export default function App() {
   useEffect(() => { LS.set("wh_notifs", notifMap); }, [notifMap]);
   useEffect(() => { if (currentUser) LS.set("wh_user", currentUser); else localStorage.removeItem("wh_user"); }, [currentUser]);
 
-  // ── Auto-refresh from Supabase every 5 minutes ───────────────────────────
+  // ── Seed leaderboard from already-completed lists ────────────────────────
+  useEffect(() => {
+    if (lists.length === 0) return;
+    const today = new Date().toDateString();
+    const lastSeeded = LS.get("wh_leaderboard_seeded", null);
+    if (lastSeeded === today) return; // already seeded today
+
+    const scores = LS.get("wh_leaderboard", {});
+    let updated = false;
+
+    lists.forEach(list => {
+      if (list.isRollover) return;
+      if (!list.dueTime || list.dueTime === "-") return;
+      const allDone = list.tasks.length > 0 && list.tasks.every(t => t.doneBy);
+      if (!allDone) return;
+
+      // Check if completed today
+      const lastDoneAt = list.tasks.map(t => t.doneAt).filter(Boolean).sort().reverse()[0];
+      if (!lastDoneAt) return;
+      const doneDate = new Date(lastDoneAt).toDateString();
+      if (doneDate !== today) return;
+
+      // Check if on time
+      const dueMins = parseDueMins(list.dueTime);
+      const doneMins = new Date(lastDoneAt).getHours()*60 + new Date(lastDoneAt).getMinutes();
+      const onTime = dueMins === 9999 || doneMins <= dueMins;
+
+      const owners = [...new Set(list.assignedTo)];
+      owners.forEach(wId => {
+        if (!scores[wId]) scores[wId] = { onTime:0, total:0 };
+        scores[wId].total++;
+        if (onTime) scores[wId].onTime++;
+        updated = true;
+      });
+    });
+
+    if (updated) {
+      LS.set("wh_leaderboard", scores);
+      if (CLOUD_ENABLED) sbUpsert("app_state", { key:"leaderboard", value:JSON.stringify(scores) });
+    }
+    LS.set("wh_leaderboard_seeded", today);
+  }, [lists]);
   useEffect(() => {
     if (!CLOUD_ENABLED) return;
     const iv = setInterval(() => {
