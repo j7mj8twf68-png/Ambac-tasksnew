@@ -1182,14 +1182,28 @@ export default function App() {
               return true;
             });
 
-            // Sort: lists with High priority incomplete tasks first, then by due time
+            // Sort: overdue first, then high priority lists, then by due time
             const sorted = [...filtered].sort((a, b) => {
-              const aHighCount = a.tasks.filter(t => !t.doneBy && t.priority==="high").length;
-              const bHighCount = b.tasks.filter(t => !t.doneBy && t.priority==="high").length;
-              if (aHighCount !== bHighCount) return bHighCount - aHighCount;
-              const aMedCount = a.tasks.filter(t => !t.doneBy && t.priority==="medium").length;
-              const bMedCount = b.tasks.filter(t => !t.doneBy && t.priority==="medium").length;
-              if (aMedCount !== bMedCount) return bMedCount - aMedCount;
+              const nowMins3 = new Date().getHours()*60 + new Date().getMinutes();
+              const aSchedToday = !a.scheduleMode || a.scheduleMode==="always" || (a.scheduleMode==="recurring" && a.scheduleDays && a.scheduleDays.includes(todayIdx())) || (a.scheduleMode==="oneTime" && a.scheduleDate && new Date(a.scheduleDate+"T00:00:00").toDateString()===new Date().toDateString());
+              const bSchedToday = !b.scheduleMode || b.scheduleMode==="always" || (b.scheduleMode==="recurring" && b.scheduleDays && b.scheduleDays.includes(todayIdx())) || (b.scheduleMode==="oneTime" && b.scheduleDate && new Date(b.scheduleDate+"T00:00:00").toDateString()===new Date().toDateString());
+              const aPastDate = a.scheduleMode==="oneTime" && a.scheduleDate && new Date(a.scheduleDate+"T00:00:00") < new Date(new Date().toDateString());
+              const bPastDate = b.scheduleMode==="oneTime" && b.scheduleDate && new Date(b.scheduleDate+"T00:00:00") < new Date(new Date().toDateString());
+              const aOverdue = ((parseDueMins(a.dueTime) < nowMins3 && aSchedToday) || aPastDate) && progress(a) < 100 && !a.isRollover;
+              const bOverdue = ((parseDueMins(b.dueTime) < nowMins3 && bSchedToday) || bPastDate) && progress(b) < 100 && !b.isRollover;
+              const aListHigh = a.priority === "high" && progress(a) < 100;
+              const bListHigh = b.priority === "high" && progress(b) < 100;
+              const aHighTask = a.tasks.filter(t => !t.doneBy && t.priority==="high").length > 0;
+              const bHighTask = b.tasks.filter(t => !t.doneBy && t.priority==="high").length > 0;
+
+              // Score each list: higher = show first
+              const score = (overdue, listHigh, highTask) =>
+                (overdue && listHigh ? 6 : overdue && highTask ? 5 : overdue ? 4 : listHigh ? 3 : highTask ? 2 : 1);
+
+              const aScore = score(aOverdue, aListHigh, aHighTask);
+              const bScore = score(bOverdue, bListHigh, bHighTask);
+              if (aScore !== bScore) return bScore - aScore;
+              // Within same priority group sort by due time
               return parseDueMins(a.dueTime) - parseDueMins(b.dueTime);
             });
 
