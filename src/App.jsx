@@ -106,28 +106,36 @@ try {
 const responsiveCSS = [
   "* { box-sizing: border-box; }",
   "html, body { margin: 0; padding: 0; }",
+  // Mobile - full screen
   "@media (max-width: 500px) {",
   "  .rsp-shell { background: #081729; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; }",
   "  .rsp-phone { width: 100% !important; min-height: 100vh !important; border-radius: 0 !important; box-shadow: none !important; }",
   "}",
+  // iPad - full screen
   "@media (min-width: 501px) and (max-width: 1024px) {",
   "  .rsp-shell { background: #081729; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 0; }",
   "  .rsp-phone { width: 100% !important; min-height: 100vh !important; border-radius: 0 !important; box-shadow: none !important; }",
   "  .rsp-grid-2 { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 12px !important; }",
   "  .rsp-grid-3 { display: grid !important; grid-template-columns: 1fr 1fr 1fr !important; gap: 10px !important; }",
   "}",
+  // Desktop - wider centered card with more breathing room
   "@media (min-width: 1025px) {",
-  "  .rsp-shell { background: #081729; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 32px; gap: 24px; }",
-  "  .rsp-phone { width: 520px !important; min-height: calc(100vh - 64px) !important; border-radius: 24px !important; flex-shrink: 0; }",
+  "  .rsp-shell { background: #081729; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 0; }",
+  "  .rsp-phone { width: 780px !important; min-height: 100vh !important; border-radius: 0 !important; box-shadow: 0 0 60px rgba(0,0,0,0.5) !important; flex-shrink: 0; }",
   "  .rsp-grid-2 { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; }",
   "  .rsp-grid-3 { display: grid !important; grid-template-columns: 1fr 1fr 1fr !important; gap: 12px !important; }",
-  "  .rsp-login-grid { display: grid !important; grid-template-columns: 1fr 1fr 1fr !important; gap: 12px !important; }",
   "  .rsp-card-scroll { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 12px !important; align-content: start; }",
+  "  .rsp-stat-num { font-size: 32px !important; }",
+  "}",
+  // Wide desktop - even more room
+  "@media (min-width: 1400px) {",
+  "  .rsp-phone { width: 1000px !important; }",
+  "  .rsp-card-scroll { grid-template-columns: 1fr 1fr 1fr !important; }",
   "}",
   "button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }",
   "input, textarea, select { font-size: 16px !important; }",
   "textarea { font-size: 14px !important; }",
-  "::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }",
+  "::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }",
 ].join("\n");
 
 export default function App() {
