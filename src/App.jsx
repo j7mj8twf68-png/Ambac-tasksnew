@@ -276,14 +276,15 @@ export default function App() {
   useEffect(() => { LS.set("wh_notifs", notifMap); }, [notifMap]);
   useEffect(() => { if (currentUser) LS.set("wh_user", currentUser); else localStorage.removeItem("wh_user"); }, [currentUser]);
 
-  // ── Seed leaderboard from already-completed lists ────────────────────────
+  // ── Seed leaderboard from already-completed lists on first load only ──────
   useEffect(() => {
     if (lists.length === 0) return;
     const today = new Date().toDateString();
     const lastSeeded = LS.get("wh_leaderboard_seeded", null);
-    if (lastSeeded === today) return; // already seeded today
+    if (lastSeeded === today) return; // already seeded today - avoid double counting
 
-    const scores = LS.get("wh_leaderboard", {});
+    // Reset scores for today and recount from scratch
+    const freshScores = {};
     let updated = false;
 
     lists.forEach(list => {
@@ -292,32 +293,32 @@ export default function App() {
       const allDone = list.tasks.length > 0 && list.tasks.every(t => t.doneBy);
       if (!allDone) return;
 
-      // Check if completed today
+      // Only count lists completed today
       const lastDoneAt = list.tasks.map(t => t.doneAt).filter(Boolean).sort().reverse()[0];
       if (!lastDoneAt) return;
       const doneDate = new Date(lastDoneAt).toDateString();
       if (doneDate !== today) return;
 
-      // Check if on time
+      // Check if on time — compare when last task was done vs due time
       const dueMins = parseDueMins(list.dueTime);
       const doneMins = new Date(lastDoneAt).getHours()*60 + new Date(lastDoneAt).getMinutes();
       const onTime = dueMins === 9999 || doneMins <= dueMins;
 
       const owners = [...new Set(list.assignedTo)];
       owners.forEach(wId => {
-        if (!scores[wId]) scores[wId] = { onTime:0, total:0 };
-        scores[wId].total++;
-        if (onTime) scores[wId].onTime++;
+        if (!freshScores[wId]) freshScores[wId] = { onTime:0, total:0 };
+        freshScores[wId].total++;
+        if (onTime) freshScores[wId].onTime++;
         updated = true;
       });
     });
 
     if (updated) {
-      LS.set("wh_leaderboard", scores);
-      if (CLOUD_ENABLED) sbUpsert("app_state", { key:"leaderboard", value:JSON.stringify(scores) });
+      LS.set("wh_leaderboard", freshScores);
+      if (CLOUD_ENABLED) sbUpsert("app_state", { key:"leaderboard", value:JSON.stringify(freshScores) });
     }
     LS.set("wh_leaderboard_seeded", today);
-  }, [lists]);
+  }, [lists.length]); // only run when number of lists changes, not on every update
   useEffect(() => {
     if (!CLOUD_ENABLED) return;
     const iv = setInterval(() => {
@@ -584,21 +585,35 @@ export default function App() {
     setPinTarget(null); setPinEntry("");
   };
 
-  const trackLeaderboard = (list) => {
-    if (!list.dueTime || list.dueTime === "-") return;
-    const dueMins = parseDueMins(list.dueTime);
-    const nowMins2 = new Date().getHours()*60 + new Date().getMinutes();
-    const onTime = dueMins === 9999 || nowMins2 <= dueMins;
-    const owners = [...new Set(list.assignedTo)];
-    const scores = LS.get("wh_leaderboard", {});
-    owners.forEach(wId => {
-      if (!scores[wId]) scores[wId] = { onTime:0, total:0 };
-      scores[wId].total++;
-      if (onTime) scores[wId].onTime++;
+  const trackLeaderboard = useCallback((completedList) => {
+    if (!completedList.dueTime || completedList.dueTime === "-") return;
+    const today = new Date().toDateString();
+    // Rebuild scores from scratch for today to avoid double counting
+    const freshScores = {};
+    // Count all lists completed today including this one
+    const allLists = [...lists.filter(l => l.id !== completedList.id), completedList];
+    allLists.forEach(list => {
+      if (list.isRollover) return;
+      if (!list.dueTime || list.dueTime === "-") return;
+      const allDone = list.tasks.length > 0 && list.tasks.every(t => t.doneBy);
+      if (!allDone) return;
+      const lastDoneAt = list.tasks.map(t => t.doneAt).filter(Boolean).sort().reverse()[0];
+      if (!lastDoneAt) return;
+      if (new Date(lastDoneAt).toDateString() !== today) return;
+      const dueMins = parseDueMins(list.dueTime);
+      const doneMins = new Date(lastDoneAt).getHours()*60 + new Date(lastDoneAt).getMinutes();
+      const onTime = dueMins === 9999 || doneMins <= dueMins;
+      const owners = [...new Set(list.assignedTo)];
+      owners.forEach(wId => {
+        if (!freshScores[wId]) freshScores[wId] = { onTime:0, total:0 };
+        freshScores[wId].total++;
+        if (onTime) freshScores[wId].onTime++;
+      });
     });
-    LS.set("wh_leaderboard", scores);
-    if (CLOUD_ENABLED) sbUpsert("app_state", { key:"leaderboard", value:JSON.stringify(scores) });
-  };
+    LS.set("wh_leaderboard", freshScores);
+    LS.set("wh_leaderboard_seeded", today);
+    if (CLOUD_ENABLED) sbUpsert("app_state", { key:"leaderboard", value:JSON.stringify(freshScores) });
+  }, [lists]);
 
 
   const toggleTask = (listId, taskId) => {
