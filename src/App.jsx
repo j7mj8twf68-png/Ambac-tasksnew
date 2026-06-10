@@ -62,14 +62,14 @@ const getPriority = (k) => PRIORITIES.find(p => p.key === k) || PRIORITIES[3];
 
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const COLORS = ["#0D2240","#C41230","#0891B2","#059669","#7C3AED","#D97706","#DB2777","#374151"];
-const POSITIONS = ["Worker","Lead","Supervisor","Trainer","Part-time"];
+const POSITIONS = ["Supply Chain Specialist","Lead","Supervisor","Trainer","Part-time"];
 
 // ─── Seed data ────────────────────────────────────────────────────────────
 const SEED_WORKERS = [
-  { id:"w1", name:"Alex R.",   role:"worker", position:"Worker", avatar:"AR", pin:"1111" },
+  { id:"w1", name:"Alex R.",   role:"worker", position:"Supply Chain Specialist", avatar:"AR", pin:"1111" },
   { id:"w2", name:"Jordan M.", role:"worker", position:"Lead",   avatar:"JM", pin:"2222" },
-  { id:"w3", name:"Casey T.",  role:"worker", position:"Worker", avatar:"CT", pin:"3333" },
-  { id:"w4", name:"Sam K.",    role:"worker", position:"Worker", avatar:"SK", pin:"4444" },
+  { id:"w3", name:"Casey T.",  role:"worker", position:"Supply Chain Specialist", avatar:"CT", pin:"3333" },
+  { id:"w4", name:"Sam K.",    role:"worker", position:"Supply Chain Specialist", avatar:"SK", pin:"4444" },
 ];
 const MANAGER = { id:"mgr", name:"Manager", role:"manager", avatar:"M", pin:"0000" };
 
@@ -181,7 +181,7 @@ export default function App() {
   // Admin / edit state
   const [adminTab,        setAdminTab]        = useState("lists");
   const [newWorkerName,   setNewWorkerName]   = useState("");
-  const [newWorkerPosition,setNewWorkerPosition]=useState("Worker");
+  const [newWorkerPosition,setNewWorkerPosition]=useState("Supply Chain Specialist");
   const [editingListId,   setEditingListId]   = useState(null);
   const [editTitle,       setEditTitle]       = useState("");
   const [editDue,         setEditDue]         = useState("");
@@ -809,7 +809,7 @@ export default function App() {
       console.log("Worker saved to Supabase:", result);
     }
     log("Added worker: " + w.name, currentUser.id);
-    setNewWorkerName(""); setNewWorkerPosition("Worker");
+    setNewWorkerName(""); setNewWorkerPosition("Supply Chain Specialist");
   };
 
   const removeWorker = (wId) => {
@@ -921,7 +921,7 @@ export default function App() {
                       {isTopWorker && <div style={{position:"absolute",top:"-14px",left:"50%",transform:"translateX(-50%)",fontSize:"18px",lineHeight:1,pointerEvents:"none"}}>&#x1F451;</div>}
                     </div>
                     <div style={s.loginName}>{user.name}</div>
-                    <div style={s.loginRole}>{user.role==="manager" ? "Manager" : (user.position||"Worker")}</div>
+                    <div style={s.loginRole}>{user.role==="manager" ? "Manager" : (user.position||"Supply Chain Specialist")}</div>
                   </button>
                 );
               })}
@@ -1462,7 +1462,7 @@ export default function App() {
       ];
       workers.forEach(w => {
         const r = workerReport[w.id];
-        lines.push(w.name + " (" + (w.position||"Worker") + ")");
+        lines.push(w.name + " (" + (w.position||"Supply Chain Specialist") + ")");
         lines.push("  Overdue: " + r.overdueTasks.length + "  Done Today: " + r.completedToday.length + "  Late: " + r.completedLate.length);
         r.overdueTasks.forEach(({task,list,days,todayOverdue}) => {
           lines.push("  - " + task.text + " [" + (list?list.title:"") + "] " + (todayOverdue ? "Due today" : days + "d overdue"));
@@ -1526,7 +1526,7 @@ export default function App() {
                       <div style={{...s.workerReportAvatar, background:w.position==="Lead"?"#9B0E25":"#0D2240"}}>{w.avatar}</div>
                       <div style={s.workerReportInfo}>
                         <div style={s.workerReportName}>{w.name}</div>
-                        <div style={s.workerReportPos}>{w.position||"Worker"}</div>
+                        <div style={s.workerReportPos}>{w.position||"Supply Chain Specialist"}</div>
                       </div>
                       <div style={s.workerReportStats}>
                         <div style={{...s.workerStatPill, background:hasOverdue?"#FEE2E2":"#f0f0f0", color:hasOverdue?"#C41230":"#888"}}>
@@ -1991,7 +1991,7 @@ export default function App() {
                     count++;
                   }
                   for (const w of workers) {
-                    await sbUpsert("workers", { id:w.id, name:w.name, role:w.role, position:w.position||"Worker", avatar:w.avatar, pin:w.pin||"0000" });
+                    await sbUpsert("workers", { id:w.id, name:w.name, role:w.role, position:w.position||"Supply Chain Specialist", avatar:w.avatar, pin:w.pin||"0000" });
                   }
                   alert("Pushed " + count + " lists and " + workers.length + " workers to cloud!");
                 }} style={{...s.rolloverTestBtn, background:"#059669", marginTop:"8px"}}>&#x2601; Push All Data to Cloud</button>
@@ -2014,7 +2014,7 @@ export default function App() {
                   <div style={s.workerInfo}>
                     <div style={s.workerName}>{w.name}</div>
                     <div style={s.workerMeta}>
-                      <select value={w.position||"Worker"} onChange={e=>{ const pos=e.target.value; setWorkers(prev=>prev.map(u=>u.id===w.id?{...u,position:pos}:u)); if(CLOUD_ENABLED) sbUpsert("workers",{id:w.id,name:w.name,role:w.role,position:pos,avatar:w.avatar,pin:w.pin||"0000"}); }} style={s.positionSelect}>
+                      <select value={w.position||"Supply Chain Specialist"} onChange={e=>{ const pos=e.target.value; setWorkers(prev=>prev.map(u=>u.id===w.id?{...u,position:pos}:u)); if(CLOUD_ENABLED) sbUpsert("workers",{id:w.id,name:w.name,role:w.role,position:pos,avatar:w.avatar,pin:w.pin||"0000"}); }} style={s.positionSelect}>
                         {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
                       </select>
                     </div>
@@ -2045,9 +2045,9 @@ export default function App() {
                   <div style={s.workerAvatar}>{w.avatar}</div>
                   <div style={s.workerInfo}>
                     <div style={s.workerName}>{w.name}</div>
-                    <div style={{...s.positionBadge, background:w.position==="Lead"?"#FFF0E6":"#f0f0f0", color:w.position==="Lead"?"#E86A2B":"#888"}}>{w.position||"Worker"}</div>
+                    <div style={{...s.positionBadge, background:w.position==="Lead"?"#FFF0E6":"#f0f0f0", color:w.position==="Lead"?"#E86A2B":"#888"}}>{w.position||"Supply Chain Specialist"}</div>
                   </div>
-                  <input type="number" maxLength={4} value={w.pin||""} onChange={e=>{ const v=e.target.value.slice(0,4); setWorkers(prev=>prev.map(u=>u.id===w.id?{...u,pin:v}:u)); if(CLOUD_ENABLED&&v.length===4) sbUpsert("workers",{id:w.id,name:w.name,role:w.role,position:w.position||"Worker",avatar:w.avatar,pin:v}); }}
+                  <input type="number" maxLength={4} value={w.pin||""} onChange={e=>{ const v=e.target.value.slice(0,4); setWorkers(prev=>prev.map(u=>u.id===w.id?{...u,pin:v}:u)); if(CLOUD_ENABLED&&v.length===4) sbUpsert("workers",{id:w.id,name:w.name,role:w.role,position:w.position||"Supply Chain Specialist",avatar:w.avatar,pin:v}); }}
                     placeholder="0000" style={s.pinEditInput} />
                 </div>
               ))}
